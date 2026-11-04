@@ -1,0 +1,16 @@
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+.pytest_cache/
+
+# Data (large, reproducible via download)
+data/raw/
+data/processed/
+data/splits/
+
+# Model weights and logs (large)
+outputs/models/
+outputs/logs/
+PROGRESS.md

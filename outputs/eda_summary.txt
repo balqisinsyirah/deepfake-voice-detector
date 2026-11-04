@@ -1,0 +1,59 @@
+Deepfake Voice Detector - Step 2 EDA summary
+
+Total clips: 31,779
+Sample-rate distribution: {16000: 31779}
+Channel distribution: {1: 31779}
+Total duration: 37.85 hours
+
+Summary by class:
+
+           n   hours  duration_mean  duration_median  duration_std  duration_min  duration_q05  duration_q25  duration_q75  duration_q95  duration_max  rms_median  peak_median  clip_ratio_mean
+label                                                                                                                                                                                           
+real   19963  20.756          3.743            2.991         2.780         0.438         1.134         1.972         4.570         8.948        24.951     -26.055       -9.284              0.0
+fake   11816  17.095          5.208            4.046         3.971         0.548         1.323         2.415         6.682        13.375        24.991     -28.535      -10.055              0.0
+
+
+Overall difference tests:
+
+  metric  real_median  fake_median  mannwhitney_p  ks_stat  ks_p  cliffs_delta
+duration     2.991000     4.045531            0.0 0.187669   0.0     -0.238513
+rms_dbfs   -26.055346   -28.535338            0.0 0.263952   0.0      0.297822
+
+
+Within-speaker paired tests (controls for speaker composition):
+
+         metric  n_speakers  median_real  median_fake  median_diff_fake_minus_real  n_fake_larger  wilcoxon_p
+duration_median          54     3.378031     4.530297                     1.064281             37    0.002206
+     rms_median          54   -25.109153   -27.792460                    -2.143407             21    0.095698
+
+
+Single-feature shortcut AUC (0.5=chance, 1.0=perfect):
+
+                feature  auc_for_fake
+           duration_raw        0.6193
+                rms_raw        0.6489
+duration_within_speaker        0.6128
+     rms_within_speaker        0.7057
+
+
+Per-speaker shortcut AUC summary:
+
+       auc_duration  auc_rms
+count       39.0000  39.0000
+mean         0.5789   0.6732
+50%          0.5958   0.7436
+min          0.1612   0.0000
+max          0.7985   0.9991
+
+
+Number of speakers: 54
+Speakers with both real and fake samples: 54
+
+
+Waveform / Mel example:
+
+      speaker label class_name      file  duration   rms_dbfs                                        path
+Alec Guinness  real       Real   818.wav  4.053063 -25.299363   data/raw/release_in_the_wild/real/818.wav
+Alec Guinness  fake       Fake 14458.wav  4.223000 -30.266716 data/raw/release_in_the_wild/fake/14458.wav
+
+Mean Mel figure: 120 random 4-second clips per class; each clip's mean energy is subtracted before averaging. Red in the difference map means higher relative energy for real speech.

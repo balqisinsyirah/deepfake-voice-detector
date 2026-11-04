@@ -4,7 +4,7 @@ Hanyang University, AI and Application, ITE351 (Fall 2026)
  ## Group Members
  1. Zeng Junxiang, Information Systems, goblin888@hanyang.ac.kr
  2. Pa Pa Khine, Information Systems, khinpapa302@gmail.com
- 3. Balqis Insyirah, Information Systems, email
+ 3. Balqis Insyirah, Information Systems, balqis.ink@gmail.com
  4. Shaqweeza, Information Systems, shqweeza20@hanyang.ac.kr
 
 ## Introduction

@@ -57,13 +57,6 @@ project structure.
 - librosa extracted a 128-band Mel-spectrogram from a 2-second, 16 kHz clip (shape `(128, 63)`)
 - `src/00_environment_check.py` can be used to repeat the environment check
 
-**Blog takeaway**
-
-> A reproducible deep-learning environment was built in WSL2 with a project-local
-> virtual environment. PyTorch detected the RTX 3060 and passed both a real GPU
-> operation and an audio feature-extraction test, providing a solid base for
-> processing roughly 31.8k audio clips.
-
 ---
 
 ## Step 1: Dataset download and organization

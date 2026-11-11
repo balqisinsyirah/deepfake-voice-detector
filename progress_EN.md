@@ -194,6 +194,154 @@ systematic real/fake differences; and visualize waveforms and Mel-spectrograms.
 
 ---
 
+## Step 3: Preprocessing and feature extraction
+
+**Goal:** standardize sample rate, duration, and loudness; extract log-Mel
+spectrograms; and save a feature matrix that later training steps can load
+directly.
+
+**Pipeline**
+
+- Sample rate: resample every clip to 16 kHz mono (the dataset already satisfies this).
+- Duration: fix every clip to 4 seconds. Long clips are center-cropped; short clips
+  are repeat-padded (wrap-pad) instead of zero-padded, avoiding a silence shortcut.
+- Loudness: normalize each clip to -23 dBFS RMS. If the peak exceeds 0.99, scale the
+  clip down to avoid clipping.
+- Mel parameters: `n_mels=128`, `n_fft=2048`, `hop_length=512`, `fmin=20`,
+  `fmax=8000`, `power_to_db(ref=np.max, top_db=80)`.
+- Parallelism: 12 worker processes; the full run over 31,779 clips took about 24 minutes.
+- Output directory: `data/processed/mel/`.
+
+**Key numbers**
+
+| Item | Value |
+|---|---:|
+| Feature matrix | `mel_spectrograms.npy` |
+| Shape | `(31779, 128, 126)` |
+| Data type | float32 |
+| File size | about 2.0 GB |
+| Labels | 0 = Real (19,963); 1 = Fake (11,816) |
+| Value range | -80 to 0 dB |
+| Invalid values | no NaN, no Inf |
+| Metadata rows | 31,779 (no read errors) |
+
+- Median RMS before normalization: Real -25.9 dBFS, Fake -28.5 dBFS.
+- Median RMS after normalization: -23.0 dBFS for both classes.
+- Loudness-only shortcut AUC: 0.649 before normalization, 0.505 after.
+- 61% of clips are shorter than 4 seconds and require wrap-padding.
+- Median padding: Real 1.01 s, Fake 0.00 s.
+- Residual padding shortcut: AUC = 0.399 (0.5 means no class signal).
+- Mean center-crop start: Real 0.43 s, Fake 0.99 s (this value is not a model input).
+
+**Figures**
+
+| Figure | What it shows |
+|---|---|
+| `outputs/figures/03_loudness_before_after.png` | RMS distributions before and after normalization; after normalization both classes overlap at -23 dBFS. |
+| `outputs/figures/03_preprocessed_examples.png` | Final waveform and log-Mel input for one real and one fake clip from the same speaker. |
+| `outputs/figures/03_padding_by_class.png` | Wrap-padding needed to reach 4 seconds; the residual padding AUC is 0.399. |
+
+**Caveats**
+
+- The strong loudness shortcut is essentially removed, but 61% of clips still need
+  repeat-padding. The padding amount retains a weak class signal, and a model could
+  potentially exploit repeated content.
+- Training should therefore use augmentation such as SpecAugment or time masking,
+  and error analysis should group mistakes by padding amount.
+- Feature mean and standard deviation for neural networks must be computed on the
+  training split only, never on the full dataset, to avoid validation leakage.
+- A non-normalized control feature set can be generated with
+  `--no-normalize --output-dir data/processed/mel_raw` for an ablation study.
+- `data/processed/` is ignored by git, so generated features are not committed.
+
+**Blog takeaway**
+
+> Per-clip RMS normalization reduced the loudness-only AUC from 0.649 to 0.505,
+> essentially removing the strongest shortcut found in EDA. Fixing the duration at
+> 4 seconds also removed the direct duration cue. However, 61% of clips are shorter
+> than 4 seconds and require repeat-padding, and the padding amount still carries a
+> weak class signal (AUC = 0.399). Preprocessing alone is therefore not enough:
+> training-time augmentation, a speaker-disjoint split, and error analysis grouped
+> by padding amount are still needed to test whether the model learns genuine
+> spoofing artifacts.
+
+---
+
+## Step 4: Dataset split (70/30) and DataLoaders
+
+**Goal:** create a speaker-disjoint training/validation split, compute normalization
+statistics on the training split only, and build PyTorch Dataset/DataLoader objects.
+
+**Method**
+
+- Split at the speaker level: every clip from a speaker goes to either training or
+  validation, never both.
+- Fixed random seed 42. Search 5,000 random speaker permutations and choose the one
+  that keeps:
+  - validation close to 30% of all clips;
+  - validation fake share close to the global 37.18%;
+  - both classes present in both splits.
+- Normalization: compute the global feature mean/std on the training split only;
+  validation reuses those statistics.
+- Class weights: inverse-frequency CrossEntropy weights computed from the training
+  split to reduce the effect of the 63/37 imbalance.
+- Dataset: lazily reads rows from the `.npy` memmap and returns a `(1, 128, 126)`
+  float32 tensor plus a `long` label.
+- DataLoader: batch size 32, shuffled training loader, unshuffled validation loader,
+  4 workers, and pinned memory when CUDA is available.
+
+**Key numbers**
+
+| Item | Train | Validation |
+|---|---:|---:|
+| Clips | 22,233 (69.96%) | 9,546 (30.04%) |
+| Speakers | 40 | 14 |
+| Real clips | 13,954 | 6,009 |
+| Fake clips | 8,279 | 3,537 |
+| Fake share | 37.24% | 37.05% |
+
+- Global fake share: 37.18%.
+- Speaker overlap: 0; row-index overlap: 0.
+- Class weights (Real/Fake): `[0.7967, 1.3427]`.
+- Training feature mean/std: `-50.6645 / 17.4524`.
+- DataLoader: 695 training batches and 299 validation batches; batch shape
+  `(32, 1, 128, 126)`.
+- After standardization, the training batch has mean/std about `-0.014 / 0.956`;
+  the validation batch has about `-0.107 / 1.039`.
+- Validation speakers: 2Pac, Adam Driver, Alan Watts, Ayn Rand, Barack Obama,
+  Bob Ross, Dwight Eisenhower, Kamala Harris, Lyndon Johnson, Mr. Rogers,
+  Norm MacDonald, Ronald Reagan, The Notorious B.I.G., and William F. Buckley.
+
+**Figure**
+
+- `outputs/figures/04_split_composition.png`: real/fake counts per split and fake
+  share versus the global 37.2% line.
+
+**Caveats**
+
+- The validation set contains only 14 speakers, so results can vary depending on
+  which speakers happen to land in validation. Speaker-level cross-validation would
+  provide a more robust estimate later.
+- Overall class balance is preserved, but individual speakers have very different
+  real/fake ratios (for example, Barack Obama has far more real than fake clips).
+  The validation set may therefore be harder than a random file-level split.
+- Normalization statistics come from the training split. The validation batch mean
+  is slightly shifted (-0.107), which reflects the different speaker distribution
+  and should not be corrected using validation data.
+- The Dataset does not apply augmentation yet. The CNN training step will add
+  SpecAugment/time masking and use the saved class weights.
+
+**Blog takeaway**
+
+> The speaker-disjoint 70/30 split produced 22,233 training clips and 9,546
+> validation clips with zero speaker overlap, while preserving the class ratio
+> (37.24% fake in training, 37.05% in validation, 37.18% globally). This is stricter
+> than a random file-level split and tests generalization to unseen speakers. The
+> DataLoader reliably yields `(32, 1, 128, 126)` tensors, and normalization
+> statistics are computed on the training split only, avoiding validation leakage.
+
+---
+
 ## Key concepts
 
 **Why can accuracy be misleading with a 63/37 split?**
@@ -218,3 +366,7 @@ honest estimate of generalization.
 - `src/00_environment_check.py`: environment check (English output).
 - `src/01_organize_dataset.py`: organize the flat audio files and build `dataset_index.csv`.
 - `src/02_eda.py`: run the full EDA and regenerate all Step 2 figures.
+- `src/03_preprocess.py`: build the log-Mel feature matrix and Step 3 figures
+  (`--figures-only` regenerates the figures from existing features).
+- `src/04_split_dataloader.py`: create the speaker-disjoint split, compute training
+  statistics, and smoke-test the DataLoaders.

@@ -13,3 +13,17 @@ The rapid advancement of generative AI has fueled a surge in sophisticated voice
 Our objective is to develop a baseline deepfake voice detector by training and comparing the performance of various models to combat this increasing problem. To accomplish this, we utilized this Kaggle dataset, which contains approximately 31,800 audio recordings. We will split the dataset into two parts: 70% for training and 30% for the validation set, processing raw audio files via librosa to extract Mel-spectrogram features, and training image-based and hybrid neural network architectures using AWS SageMaker Studio Lab.
 
 Once trained, the models will be thoroughly evaluated to assess their effectiveness, with potential scope expansions depending on the results. Ultimately, this project explores practical data-driven pipelines to safeguard individuals against automated audio-based security threats.
+
+# Datasets
+
+
+# Methodology
+
+
+# Evaluation & Analysis
+
+
+# Related Work
+'In-the-Wild' Dataset, by Abdalla Mohamed and Mohammed Abdeldayem : https://www.kaggle.com/datasets/abdallamohamed312/in-the-wild-audio-deepfake/data?select=release_in_the_wild
+
+# Conclusion : Discussion

@@ -14,16 +14,18 @@ Our objective is to develop a baseline deepfake voice detector by training and c
 
 Once trained, the models will be thoroughly evaluated to assess their effectiveness, with potential scope expansions depending on the results. Ultimately, this project explores practical data-driven pipelines to safeguard individuals against automated audio-based security threats.
 
-# Datasets
+## Datasets
+In this project, we use a Kaggle dataset titled 'In-the-Wild' created by Abdalla Mohamed and Mohammed Abdeldayem. The dataset includes audio deepfakes and corresponding bona-fide (real) audio recordings for a set of politicians and other public figures, collected from publicly available sources such as social networks and video streaming platforms. The dataset contains approximately 31,800 audio recordings for n = 58 politicians and celebrities, divided into three main subsets with a total duration of 38 hours (20.8 hours of bona-fide audio and 17.2 hours of spoofed audio). On average, there are 23 minutes of bona-fide and 18 minutes of spoofed audio per speaker.
+
+The dataset was processed to optimize outcomes for analysis of deepfake detection and voice anti-spoofing machine-learning models. Raw audio files were processed using librosa to extract Mel-spectrogram features, transforming temporal audio waveforms into time-frequency representations. In addition, the dataset is split into 70% for training and 30% for validation. This step standardizes the input pipeline, improving the models' ability to generalize across realistic, in-the-wild audio samples. The goal of preprocessing the dataset was to ensure consistency, eliminate noise variances, and maintain compatibility with the input requirements of our selected image-based and hybrid neural network architectures in AWS SageMaker Studio Lab.
+
+## Methodology
 
 
-# Methodology
+## Evaluation & Analysis
 
 
-# Evaluation & Analysis
-
-
-# Related Work
+## Related Work
 'In-the-Wild' Dataset, by Abdalla Mohamed and Mohammed Abdeldayem : https://www.kaggle.com/datasets/abdallamohamed312/in-the-wild-audio-deepfake/data?select=release_in_the_wild
 
-# Conclusion : Discussion
+## Conclusion : Discussion

@@ -11,6 +11,7 @@ Outputs:
     outputs/logs/08_model_comparison.csv
     outputs/logs/08_model_comparison.json
     outputs/logs/08_model_comparison.md
+    outputs/logs/08_per_speaker_breakdown.csv
     outputs/figures/08_metric_comparison.png
     outputs/figures/08_roc_comparison.png
     outputs/figures/08_eer_curves.png
@@ -76,6 +77,7 @@ MODEL_SPECS = [
 ]
 
 CLASS_NAMES = ["Real", "Fake"]
+MIN_FAKE_PER_SPEAKER = 20  # ignore speakers with too few fake clips for a stable recall
 
 sns.set_theme(style="whitegrid", context="notebook")
 plt.rcParams.update(
@@ -91,13 +93,10 @@ plt.rcParams.update(
 
 def compute_eer(labels: np.ndarray, probs: np.ndarray) -> tuple[float, float]:
     """Return the equal error rate and the probability threshold nearest to it."""
+    # roc_curve already returns FPR in non-decreasing order, so no re-sorting is needed
+    # (an unstable sort would make ties in FPR pick an arbitrary FNR).
     fpr, tpr, thresholds = roc_curve(labels, probs)
     fnr = 1.0 - tpr
-
-    order = np.argsort(fpr)
-    fpr = fpr[order]
-    fnr = fnr[order]
-    thresholds = thresholds[order]
 
     unique_fpr, first_index = np.unique(fpr, return_index=True)
     unique_fnr = fnr[first_index]
@@ -138,6 +137,33 @@ def evaluate_predictions(pred_df: pd.DataFrame) -> dict:
         "fn": int(fn),
         "confusion_matrix": cm.tolist(),
     }
+
+
+def per_speaker_breakdown(pred_df: pd.DataFrame, model: str) -> pd.DataFrame:
+    """Per-speaker error counts, fake recall, and real specificity at threshold 0.5."""
+    df = pred_df.copy()
+    df["pred"] = (df["prob_fake"] >= 0.5).astype(int)
+    rows = []
+    for speaker, g in df.groupby("speaker"):
+        fake = g[g.label_id == 1]
+        real = g[g.label_id == 0]
+        fn = int((fake.pred == 0).sum())
+        fp = int((real.pred == 1).sum())
+        rows.append(
+            {
+                "model": model,
+                "speaker": speaker,
+                "n_real": len(real),
+                "n_fake": len(fake),
+                "fn": fn,
+                "fp": fp,
+                "fake_recall": (1 - fn / len(fake)) if len(fake) else np.nan,
+                "real_specificity": (1 - fp / len(real)) if len(real) else np.nan,
+                "mean_prob_fake_real": float(real.prob_fake.mean()) if len(real) else np.nan,
+                "mean_prob_fake_fake": float(fake.prob_fake.mean()) if len(fake) else np.nan,
+            }
+        )
+    return pd.DataFrame(rows)
 
 
 def plot_metric_comparison(df: pd.DataFrame, path: Path) -> None:
@@ -238,7 +264,7 @@ def plot_eer_curves(curves: dict, path: Path) -> None:
     ax.set_ylim(0, 0.08)
     ax.set_xlabel("False positive rate (FPR)")
     ax.set_ylabel("False negative rate (FNR)")
-    ax.set_title("DET curves: EER is where FPR = FNR")
+    ax.set_title("FPR vs FNR (DET-style, linear axes): EER is where FPR = FNR")
     ax.legend(loc="upper left", fontsize=8)
     fig.tight_layout()
     fig.savefig(path)
@@ -278,14 +304,15 @@ def write_markdown(df: pd.DataFrame, path: Path) -> None:
         "EER is the equal error rate; lower is better.",
         "The validation split was also used for early stopping and model selection, so these numbers are mildly optimistic.",
         "",
-        "| Model | Accuracy | Precision | Recall | Specificity | F1 | ROC-AUC | EER (%) | EER threshold |",
-        "|---|---:|---:|---:|---:|---:|---:|---:|---:|",
+        "| Model | Accuracy | Precision | Recall | Specificity | F1 | ROC-AUC | EER (%) | EER threshold | Hardest speaker (fake recall) |",
+        "|---|---:|---:|---:|---:|---:|---:|---:|---:|---|",
     ]
     for _, row in df.iterrows():
         lines.append(
             f"| {row['model']} | {row['accuracy']:.4f} | {row['precision']:.4f} | "
             f"{row['recall']:.4f} | {row['specificity']:.4f} | {row['f1']:.4f} | "
-            f"{row['roc_auc']:.4f} | {row['eer_percent']:.3f} | {row['eer_threshold']:.4f} |"
+            f"{row['roc_auc']:.4f} | {row['eer_percent']:.3f} | {row['eer_threshold']:.4f} | "
+            f"{row['hardest_speaker']} ({row['hardest_speaker_fake_recall']:.1%}) |"
         )
     path.write_text("\n".join(lines), encoding="utf-8")
 
@@ -295,6 +322,7 @@ def main() -> None:
     FIG_DIR.mkdir(parents=True, exist_ok=True)
 
     rows = []
+    speaker_frames = []
     curves = {}
     reference_labels = None
     reference_indices = None
@@ -320,9 +348,19 @@ def main() -> None:
                 raise ValueError(f"Validation labels differ for {spec['model']}")
 
         result = evaluate_predictions(pred_df)
+        speaker_df = per_speaker_breakdown(pred_df, spec["model"])
+        speaker_frames.append(speaker_df)
+        # Hardest speaker = lowest fake recall among speakers with enough fake clips
+        eligible = speaker_df[speaker_df.n_fake >= MIN_FAKE_PER_SPEAKER]
+        worst = eligible.sort_values(["fake_recall", "fn"], ascending=[True, False]).iloc[0]
         metric_json = json.loads(metrics_path.read_text(encoding="utf-8"))
         result.update(
             {
+                "mean_prob_fake_real": float(pred_df.loc[pred_df.label_id == 0, "prob_fake"].mean()),
+                "mean_prob_fake_fake": float(pred_df.loc[pred_df.label_id == 1, "prob_fake"].mean()),
+                "hardest_speaker": worst["speaker"],
+                "hardest_speaker_fake_recall": float(worst["fake_recall"]),
+                "hardest_speaker_fn": int(worst["fn"]),
                 "model": spec["model"],
                 "trainable_parameters": metric_json.get("trainable_parameters"),
                 "best_epoch": metric_json.get("best_epoch"),
@@ -356,6 +394,11 @@ def main() -> None:
             "eer_percent",
             "eer_threshold",
             "eer_rank",
+            "mean_prob_fake_real",
+            "mean_prob_fake_fake",
+            "hardest_speaker",
+            "hardest_speaker_fake_recall",
+            "hardest_speaker_fn",
             "tp",
             "fp",
             "tn",
@@ -370,7 +413,17 @@ def main() -> None:
     (LOG_DIR / "08_model_comparison.json").write_text(json.dumps(rows, indent=2), encoding="utf-8")
     write_markdown(df, LOG_DIR / "08_model_comparison.md")
 
+    speakers = pd.concat(speaker_frames, ignore_index=True)
+    speakers.to_csv(LOG_DIR / "08_per_speaker_breakdown.csv", index=False)
+
     print(df[["model", "accuracy", "precision", "recall", "f1", "roc_auc", "eer_percent", "eer_rank"]].round(4).to_string(index=False))
+    print("\nHardest speaker per model (lowest fake recall, >= "
+          f"{MIN_FAKE_PER_SPEAKER} fake clips):")
+    print(df[["model", "hardest_speaker", "hardest_speaker_fake_recall", "hardest_speaker_fn", "fn",
+              "mean_prob_fake_real", "mean_prob_fake_fake"]].round(4).to_string(index=False))
+    print("\nFake recall by validation speaker:")
+    print(speakers.pivot(index="speaker", columns="model", values="fake_recall")
+          [[spec["model"] for spec in MODEL_SPECS]].round(3).to_string())
 
     plot_metric_comparison(df, FIG_DIR / "08_metric_comparison.png")
     plot_roc_comparison(curves, FIG_DIR / "08_roc_comparison.png")

@@ -19,6 +19,7 @@ PACKAGES = {
     "seaborn": "statistical plots",
     "librosa": "audio feature extraction",
     "soundfile": "audio I/O",
+    "scipy": "statistical tests and EER",
     "sklearn": "data splitting and metrics",
     "torch": "deep learning",
     "torchaudio": "PyTorch audio utilities",

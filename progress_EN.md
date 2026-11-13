@@ -1,27 +1,139 @@
 # Deepfake Voice Detector - Project Process
-**procedures**
 
-0. Environment Setup & Project Directory Structure
+**TL;DR**
 
-1. Dataset Download & Organization
+- Task: decide whether a speech clip is real or AI-generated (fake), using the
+  In-the-Wild dataset (31,779 clips, 54 speakers).
+- Data is split by speaker (70% train / 30% validation), so the models are always
+  tested on voices they never heard during training.
+- Best model so far: **EfficientNet-B0** (F1 0.9852, ROC-AUC 0.9991, EER 1.255%).
+- Main open problem: all models struggle with one validation speaker (Adam Driver);
+  even the best model catches only 47.4% of his fake clips.
 
-2. Exploratory Data Analysis (EDA): Sample counts, audio duration, sampling rates, waveforms, and Mel-spectrogram comparisons
+**Procedures** (status)
 
-3. Preprocessing: Standardizing sampling rate and duration, extracting log-Mel-spectrograms, and saving features
+| # | Step | Status |
+|---:|---|---|
+| 0 | Environment setup and project layout | Done |
+| 1 | Dataset download and organization | Done |
+| 2 | Exploratory data analysis (EDA): counts, duration, sample rate, loudness, waveforms, Mel-spectrograms | Done |
+| 3 | Preprocessing: fixed sample rate and duration, loudness normalization, log-Mel features | Done |
+| 4 | Speaker-disjoint 70/30 split and DataLoaders | Done |
+| 5 | Model A: simple CNN baseline | Done |
+| 6 | Model B: transfer learning (pretrained ResNet18 / EfficientNet-B0) | Done |
+| 7 | Model C: hybrid CNN + LSTM/GRU | Done |
+| 8 | Evaluation and comparison: Accuracy, Precision/Recall, F1, confusion matrix, ROC-AUC, EER | Done |
+| 9 | Error analysis and limitations | To do |
+| 10 | Blog content preparation | To do |
 
-4. Dataset Splitting (70/30) & DataLoader Setup
+---
 
-5. Model A: Simple CNN Baseline
+## Glossary (terms and abbreviations used in this document and in the figures)
 
-6. Model B: Transfer Learning (Pre-trained ResNet / EfficientNet)
+**Data and audio**
 
-7. Model C: Hybrid CNN + LSTM/GRU Model
+| Term | Meaning |
+|---|---|
+| Real / bona-fide | A genuine human recording (label 0). |
+| Fake / spoof | An AI-generated (deepfake) recording (label 1). The "positive" class in all metrics. |
+| Speaker | The public figure whose voice is in the clip. |
+| Speaker-disjoint split | Every speaker is in either training or validation, never both. |
+| Sample rate (kHz) | Audio samples per second; all clips here are 16 kHz. |
+| Mono | One audio channel. |
+| RMS | Root mean square of the waveform: average signal energy, i.e. loudness. |
+| dBFS | Decibels relative to full scale. 0 dBFS is the loudest possible level; more negative = quieter. |
+| Peak level | The largest absolute sample value, in dBFS. |
+| Clipping | Samples hitting the maximum level, which distorts audio. |
+| Center crop | Keep the middle 4 seconds of a longer clip. |
+| Wrap-pad (repeat-pad) | Make a short clip 4 seconds long by repeating it, instead of adding silence. |
+| Shortcut | A simple cue (e.g. length, loudness) that predicts the label in this dataset but is not a real deepfake artifact. |
 
-8. Evaluation & Comparison: Accuracy, Precision/Recall, F1-score, Confusion Matrix, ROC-AUC (optional: EER)
+**Features**
 
-9. Error Analysis & Limitations Discussion
+| Term | Meaning |
+|---|---|
+| Spectrogram | A time x frequency picture of how much energy the audio has at each frequency over time. |
+| Mel / Mel scale | A frequency scale that matches human hearing (finer at low frequencies). |
+| log-Mel spectrogram | A Mel spectrogram in decibels (dB); the model input, shape 128 Mel bands x 126 time frames. |
+| `n_mels`, `n_fft`, `hop_length` | Number of Mel bands; FFT window size in samples; step between frames in samples. |
+| `fmin`, `fmax` | Lowest and highest frequency included (20 Hz - 8 kHz). |
+| `top_db` | Values more than 80 dB below the clip's maximum are floored at -80 dB. |
 
-10. Blog Content Preparation & Formatting
+**Statistics (EDA)**
+
+| Term | Meaning |
+|---|---|
+| Median / mean | Middle value / average. |
+| Mann-Whitney U test | Tests whether one group's values tend to be larger than the other's. |
+| KS (Kolmogorov-Smirnov) statistic | Largest gap between two distributions (0 = identical, 1 = completely separate). |
+| Cliff's delta | Effect size from -1 to 1: how often a value from one group is larger than one from the other (0 = no difference). |
+| Wilcoxon signed-rank test | Paired test, here comparing real vs fake within the same speaker. |
+| p-value | Probability of seeing a difference this large by chance; below 0.05 is usually called significant. |
+| Within-speaker | Computed after removing each speaker's own typical value, so differences between speakers do not count. |
+
+**Models and training**
+
+| Term | Meaning |
+|---|---|
+| CNN | Convolutional neural network; learns local patterns in the spectrogram image. |
+| Conv2d / BatchNorm / ReLU / MaxPool | Convolution layer / normalization layer / activation function / down-sampling layer. |
+| Dropout | Randomly zeroes units during training to reduce overfitting. |
+| Transfer learning | Start from a model pretrained on another task (here ImageNet images) and fine-tune it. |
+| ImageNet | A large photo dataset used to pretrain ResNet18 and EfficientNet-B0. |
+| ResNet18 / EfficientNet-B0 | Two standard pretrained image-classification networks. |
+| RNN, GRU, LSTM | Recurrent networks that read a sequence step by step; GRU and LSTM are two common types. |
+| BiGRU / BiLSTM | Bidirectional GRU / LSTM: read the sequence forwards and backwards. |
+| Attention pooling | Learns a weight for each time step and averages them into one vector. |
+| SpecAugment | Training-time augmentation that blanks random time and frequency bands. |
+| Class weights | Make mistakes on the smaller class (fake) cost more in the loss. |
+| CrossEntropyLoss | The standard classification loss. |
+| AdamW | The optimizer (Adam with weight decay). |
+| lr | Learning rate. |
+| ReduceLROnPlateau | Halves the learning rate when validation ROC-AUC stops improving. |
+| Epoch | One full pass over the training data. |
+| Early stopping | Stop training when validation ROC-AUC has not improved for a set number of epochs (patience). |
+| Params | Number of trainable parameters (M = million). |
+
+**Evaluation metrics** (fake is the positive class; threshold 0.5 unless stated)
+
+| Term | Meaning |
+|---|---|
+| TP / FP / TN / FN | True positive (fake caught) / false positive (real flagged as fake) / true negative (real accepted) / false negative (fake missed). |
+| Confusion matrix | 2 x 2 table of TP, FP, TN, FN. Rows = true label, columns = predicted label. |
+| Accuracy | Share of all clips classified correctly. |
+| Precision | Of clips flagged as fake, the share that really are fake. |
+| Recall (TPR) | Of the fake clips, the share that are caught. |
+| Specificity (TNR) | Of the real clips, the share correctly accepted. |
+| F1 | Harmonic mean of Precision and Recall. |
+| FPR | False positive rate = 1 - Specificity. |
+| FNR | False negative rate = 1 - Recall (share of fakes missed). |
+| ROC curve | TPR vs FPR as the decision threshold moves from 1 to 0. |
+| ROC-AUC (AUC) | Area under the ROC curve: probability that a random fake clip gets a higher fake score than a random real clip. 0.5 = chance, 1 = perfect. Values below 0.5 mean the cue works in the opposite direction. |
+| EER | Equal error rate: the error rate at the threshold where FPR = FNR. Lower is better. |
+| EER threshold | The fake-probability threshold where FPR = FNR. |
+| DET-style curve | FNR plotted against FPR; the EER is where the curve crosses the diagonal. |
+| Probability of fake | The model's softmax output for the fake class. |
+
+---
+
+## Key concepts
+
+**Why can accuracy be misleading with a 63/37 split?**
+
+If 63% of the data is real, a model that always predicts "real" already achieves
+63% accuracy while catching zero fake clips. In an anti-fraud setting, missed fake
+clips are costly. Precision, Recall, F1, the confusion matrix, and ROC-AUC are
+therefore reported alongside accuracy.
+
+**Why split by speaker instead of by file?**
+
+A random file-level split can place the same speaker in both training and
+validation. The model may then memorize the speaker's voice or recording channel
+instead of learning spoofing artifacts, inflating validation performance. A
+speaker-disjoint split simulates deployment on unseen voices and gives a more
+honest estimate of generalization.
+
+---
 
 ## Project overview
 
@@ -119,7 +231,7 @@ systematic real/fake differences; and visualize waveforms and Mel-spectrograms.
 - Statistical tests: Mann-Whitney U, Kolmogorov-Smirnov, Cliff's delta; Wilcoxon
   signed-rank for paired within-speaker comparisons.
 - Shortcut analysis: ROC-AUC of duration-only and loudness-only classifiers,
-  including speaker-centered variants and per-speaker AUC.
+  including within-speaker variants and per-speaker AUC.
 - Visualization sample: one real and one fake clip from the same speaker
   (Alec Guinness), each close to 4 seconds and close to its class median loudness.
 - Mean Mel: 120 random 4-second clips per class; each clip's mean energy was
@@ -147,11 +259,12 @@ systematic real/fake differences; and visualize waveforms and Mel-spectrograms.
   p = 0.096, and the direction is not consistent across speakers (21 of 54 speakers
   have louder fake clips).
 - Single-feature AUC (0.5 = chance): duration 0.619, loudness 0.649,
-  speaker-centered duration 0.613, speaker-centered loudness 0.706.
+  within-speaker duration 0.613, within-speaker loudness 0.706.
 - Per-speaker AUC (39 speakers with at least 20 clips per class): median duration
   AUC = 0.596, median loudness AUC = 0.744. Loudness AUC is above 0.5 for 29 of 39
-  speakers and below 0.5 for 10; an AUC near 0 is also strong separation, just in
-  the opposite direction.
+  speakers (fake is quieter) and below 0.5 for 10 (fake is louder). Both an AUC
+  near 1 and an AUC near 0 mean loudness separates the classes well for that
+  speaker; only the direction differs.
 
 **Figures**
 
@@ -186,7 +299,7 @@ systematic real/fake differences; and visualize waveforms and Mel-spectrograms.
 
 > EDA revealed two shortcuts that are easier to learn than the actual spoofing
 > artifacts: fake clips are about 1.06 seconds longer within the same speaker
-> (p = 0.002), and they are about 2.5 dB quieter overall. Loudness alone reaches a
+> (p = 0.002), and they are about 2.4 dB quieter overall (median RMS). Loudness alone reaches a
 > median per-speaker AUC of 0.744. Without loudness normalization and duration
 > standardization, a CNN may become a "volume/length detector" that fails when the
 > speaker or recording condition changes. This is also why a speaker-disjoint
@@ -209,7 +322,7 @@ directly.
   clip down to avoid clipping.
 - Mel parameters: `n_mels=128`, `n_fft=2048`, `hop_length=512`, `fmin=20`,
   `fmax=8000`, `power_to_db(ref=np.max, top_db=80)`.
-- Parallelism: 12 worker processes; the full run over 31,779 clips took about 24 minutes.
+- Parallelism: run with `--workers 12` (script default is 8); the full run over 31,779 clips took about 24 minutes.
 - Output directory: `data/processed/mel/`.
 
 **Key numbers**
@@ -228,8 +341,9 @@ directly.
 - Median RMS before normalization: Real -25.9 dBFS, Fake -28.5 dBFS.
 - Median RMS after normalization: -23.0 dBFS for both classes.
 - Loudness-only shortcut AUC: 0.649 before normalization, 0.505 after.
-- 61% of clips are shorter than 4 seconds and require wrap-padding.
-- Median padding: Real 1.01 s, Fake 0.00 s.
+- 61.0% of clips are shorter than 4 seconds and require wrap-padding (Real 67.8%, Fake 49.4%).
+- Median padding: Real 1.01 s, Fake 0.00 s. These numbers are written to
+  `data/processed/mel/preprocessing_summary.txt`.
 - Residual padding shortcut: AUC = 0.399 (0.5 means no class signal).
 - Mean center-crop start: Real 0.43 s, Fake 0.99 s (this value is not a model input).
 
@@ -384,6 +498,8 @@ a baseline for the later transfer-learning and hybrid models.
 - Mean predicted probability of fake: 0.0004 for real clips, 0.9599 for fake clips.
 - **Key anomaly:** 134 of the 139 false negatives come from a single validation
   speaker, Adam Driver. The aggregate score hides a severe speaker-level failure.
+- The per-speaker numbers and mean probabilities are produced by
+  `src/08_evaluate_models.py` (`outputs/logs/08_per_speaker_breakdown.csv`).
 
 **Figures**
 
@@ -471,7 +587,7 @@ CNN baseline.
 - False positives (real predicted as fake): Simple CNN 2 -> ResNet18 7 ->
   EfficientNet-B0 31.
 - Adam Driver fake recall: Simple CNN **2.2%** -> ResNet18 **16.8%** ->
-  EfficientNet-B0 **47.4%**.
+  EfficientNet-B0 **47.4%** (from `outputs/logs/08_per_speaker_breakdown.csv`).
 - EfficientNet-B0 is best in Accuracy/F1/AUC/Recall; ResNet18 has slightly higher
   Precision. Both trade more false positives for higher recall.
 
@@ -530,7 +646,7 @@ CNN+BiLSTM can beat the simple CNN and the transfer-learning models.
 **Architecture**
 
 - CNN front-end: three convolution blocks with 32 -> 64 -> 128 channels; each block
-  is 3x3 Conv + BatchNorm + ReLU.
+  is 3x3 Conv + BatchNorm + ReLU, followed by Dropout2d(0.1) after the last block.
 - Pooling: 128x126 -> 64x63 -> 32x31 -> 16x31 (frequency reduced to 16 while
   31 time steps are kept).
 - Sequence conversion: flatten the 16x128 frequency/channel grid into a 2048-dim
@@ -551,12 +667,12 @@ CNN+BiLSTM can beat the simple CNN and the transfer-learning models.
 - CNN+BiGRU: best epoch 5, stopped at epoch 10, about 3.0 minutes.
 - CNN+BiLSTM: best epoch 10, stopped at epoch 15, about 6.5 minutes.
 
-**Validation comparison**
+**Validation comparison** (new hybrids vs the baseline and the best model so far;
+the full five-model table is in Step 8)
 
 | Model | Accuracy | Precision | Recall | F1 | ROC-AUC | Errors | Adam Driver fake recall | Params | Time |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
 | Simple CNN | 0.9852 | **0.9994** | 0.9607 | 0.9797 | 0.9957 | 141 | 2.2% | 0.39M | 5.4 min |
-| ResNet18 | 0.9872 | 0.9980 | 0.9675 | 0.9825 | 0.9975 | 122 | 16.8% | 11.18M | 20.6 min |
 | EfficientNet-B0 | **0.9891** | 0.9911 | **0.9794** | **0.9852** | **0.9991** | **104** | **47.4%** | 4.01M | 33.1 min |
 | CNN+BiGRU | 0.9848 | 0.9953 | 0.9635 | 0.9792 | 0.9889 | 145 | 8.0% | 1.77M | 3.0 min |
 | CNN+BiLSTM | 0.9854 | 0.9948 | 0.9658 | 0.9801 | 0.9916 | 139 | 12.4% | 2.32M | 6.5 min |
@@ -637,13 +753,13 @@ Accuracy, Precision, Recall, F1, ROC-AUC, and Equal Error Rate (EER).
 
 **Comparison table**
 
-| Model | Accuracy | Precision | Recall | Specificity | F1 | ROC-AUC | EER (%) | EER threshold | EER rank |
-|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| EfficientNet-B0 | **0.9891** | 0.9911 | **0.9794** | 0.9948 | **0.9852** | **0.9991** | **1.255** | 0.1491 | 1 |
-| ResNet18 | 0.9872 | 0.9980 | 0.9675 | 0.9988 | 0.9825 | 0.9975 | 2.184 | 0.0055 | 2 |
-| Simple CNN | 0.9852 | **0.9994** | 0.9607 | **0.9997** | 0.9797 | 0.9957 | 2.393 | 0.0012 | 3 |
-| CNN+BiLSTM | 0.9854 | 0.9948 | 0.9658 | 0.9970 | 0.9801 | 0.9916 | 2.834 | 0.0164 | 4 |
-| CNN+BiGRU | 0.9848 | 0.9953 | 0.9635 | 0.9973 | 0.9792 | 0.9889 | 2.838 | 0.0118 | 5 |
+| Model | Accuracy | Precision | Recall | Specificity | F1 | ROC-AUC | EER (%) | EER threshold | EER rank | Adam Driver fake recall |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| EfficientNet-B0 | **0.9891** | 0.9911 | **0.9794** | 0.9948 | **0.9852** | **0.9991** | **1.255** | 0.1491 | 1 | **47.4%** |
+| ResNet18 | 0.9872 | 0.9980 | 0.9675 | 0.9988 | 0.9825 | 0.9975 | 2.184 | 0.0055 | 2 | 16.8% |
+| Simple CNN | 0.9852 | **0.9994** | 0.9607 | **0.9997** | 0.9797 | 0.9957 | 2.393 | 0.0012 | 3 | 2.2% |
+| CNN+BiLSTM | 0.9854 | 0.9948 | 0.9658 | 0.9970 | 0.9801 | 0.9916 | 2.834 | 0.0164 | 4 | 12.4% |
+| CNN+BiGRU | 0.9848 | 0.9953 | 0.9635 | 0.9973 | 0.9792 | 0.9889 | 2.838 | 0.0118 | 5 | 8.0% |
 
 **Key observations**
 
@@ -660,14 +776,17 @@ Accuracy, Precision, Recall, F1, ROC-AUC, and Equal Error Rate (EER).
   0.5-threshold metrics.
 - In anti-fraud use, lowering the threshold can reduce missed fakes at the cost of
   more false alarms; EER provides a balanced reference point where FPR = FNR.
+- Per-speaker breakdown: Adam Driver is the hardest validation speaker for every
+  model. Apart from him (and Kamala Harris, who has only 4 fake clips), every
+  validation speaker has fake recall of at least 99.7% for all five models.
 
 **Figures**
 
 - `outputs/figures/08_metric_comparison.png`: metric heatmap plus EER bar chart.
 - `outputs/figures/08_roc_comparison.png`: full ROC curves and a zoom near the
   operating region.
-- `outputs/figures/08_eer_curves.png`: DET curves with the FPR = FNR diagonal and
-  EER points.
+- `outputs/figures/08_eer_curves.png`: FPR vs FNR curves (DET-style, linear axes)
+  with the FPR = FNR diagonal and EER points.
 - `outputs/figures/08_confusion_matrices.png`: confusion matrices for all five
   models.
 
@@ -676,6 +795,8 @@ Accuracy, Precision, Recall, F1, ROC-AUC, and Equal Error Rate (EER).
 - `outputs/logs/08_model_comparison.csv`
 - `outputs/logs/08_model_comparison.json`
 - `outputs/logs/08_model_comparison.md`
+- `outputs/logs/08_per_speaker_breakdown.csv`: per-speaker FN/FP, fake recall, and
+  mean fake probability for every model.
 
 **Caveats**
 
@@ -700,27 +821,6 @@ Accuracy, Precision, Recall, F1, ROC-AUC, and Equal Error Rate (EER).
 > set was used for model selection; a truly independent test set or cross-dataset
 > evaluation is still needed before claiming generalization.
 
----
-
-## Key concepts
-
-**Why can accuracy be misleading with a 63/37 split?**
-
-If 63% of the data is real, a model that always predicts "real" already achieves
-63% accuracy while catching zero fake clips. In an anti-fraud setting, missed fake
-clips are costly. Precision, Recall, F1, the confusion matrix, and ROC-AUC are
-therefore reported alongside accuracy.
-
-**Why split by speaker instead of by file?**
-
-A random file-level split can place the same speaker in both training and
-validation. The model may then memorize the speaker's voice or recording channel
-instead of learning spoofing artifacts, inflating validation performance. A
-speaker-disjoint split simulates deployment on unseen voices and gives a more
-honest estimate of generalization.
-
----
-
 ## Repository notes
 
 - `src/00_environment_check.py`: environment check (English output).
@@ -737,4 +837,4 @@ honest estimate of generalization.
 - `src/07_train_hybrid.py`: train CNN+BiGRU and CNN+BiLSTM hybrids; `--model both`
   trains both sequentially.
 - `src/08_evaluate_models.py`: compare every model on the shared validation split,
-  compute EER, and generate the Step 8 tables and figures.
+  compute EER and per-speaker breakdowns, and generate the Step 8 tables and figures.

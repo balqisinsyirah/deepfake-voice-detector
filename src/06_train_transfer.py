@@ -103,7 +103,10 @@ class TransferMelDataset(Dataset):
         return len(self.indices)
 
     def _spec_augment(self, x: torch.Tensor) -> torch.Tensor:
-        """Mask random time/frequency bands after normalization (zero = mean)."""
+        """Mask random time/frequency bands after ImageNet normalization.
+
+        Masked cells are set to 0, i.e. the ImageNet channel mean (not the data mean).
+        """
         _, n_freq, n_time = x.shape
         for _ in range(2):
             width = int(self.rng.integers(1, 17))

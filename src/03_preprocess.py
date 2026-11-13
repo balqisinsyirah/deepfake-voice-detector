@@ -398,7 +398,7 @@ def main() -> None:
     parser.add_argument("--output-dir", type=Path, default=None, help="Directory for features and metadata")
     parser.add_argument("--no-normalize", action="store_true", help="Disable RMS loudness normalization (control run)")
     parser.add_argument("--overwrite", action="store_true", help="Allow writing into a non-empty output directory")
-    parser.add_argument("--figures-only", action="store_true", help="Regenerate Step 3 figures from existing features")
+    parser.add_argument("--figures-only", action="store_true", help="Regenerate Step 3 figures and summary from existing features")
     args = parser.parse_args()
 
     NORMALIZE = not args.no_normalize
@@ -418,7 +418,9 @@ def main() -> None:
         plot_loudness_before_after(meta, output_dir)
         plot_padding(meta, pad_auc, output_dir)
         plot_examples(meta, features_path, output_dir)
+        write_summary(meta, features_path, output_dir, pad_auc)
         print(f"Figures regenerated in {FIG_DIR}")
+        print(f"Summary rewritten: {output_dir / 'preprocessing_summary.txt'}")
         return
 
     output_dir.mkdir(parents=True, exist_ok=True)

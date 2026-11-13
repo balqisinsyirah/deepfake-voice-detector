@@ -63,7 +63,7 @@ HARD_SPEAKER = "Adam Driver"
 THRESHOLD = 0.5
 SEED = 42
 PROFILE_SAMPLES = 1500  # clips per training class for the spectral profile
-HIGH_BAND_START = 96  # Mel bands 96-127 are roughly the top of the 8 kHz range
+HIGH_BAND_START = 96  # Mel bands 96-127 cover roughly 3.6-8 kHz
 
 CLASS_COLORS = {"Real": "#2A9D8F", "Fake": "#E76F51"}
 
@@ -371,7 +371,7 @@ def plot_hard_speaker(df: pd.DataFrame, train: pd.DataFrame, profiles: dict, pat
     ]:
         axes[1].plot(bands, profiles[name] - ref, color=color, ls=ls, label=name)
     axes[1].axhline(0, color="black", lw=0.8)
-    axes[1].axvspan(HIGH_BAND_START, bands[-1], color="grey", alpha=0.12, label="High Mel bands")
+    axes[1].axvspan(HIGH_BAND_START, bands[-1], color="grey", alpha=0.12, label="High Mel bands (~3.6-8 kHz)")
     axes[1].set_xlabel("Mel band (low -> high frequency)")
     axes[1].set_ylabel("Relative energy minus Train Fake (dB)")
     axes[1].set_title("(b) Average spectral shape relative to training fakes")

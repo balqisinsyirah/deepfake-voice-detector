@@ -138,13 +138,11 @@ honest estimate of generalization.
 
 ## Project overview
 
-- Task: binary classification of real vs. fake speech
 - Dataset: [In-the-Wild](https://huggingface.co/datasets/mueller91/In-The-Wild) on Hugging Face
 - Dataset paper: Müller et al., *Does Audio Deepfake Detection Generalize?* (2022)
 - License: CC BY-SA 4.0
 - Features: log-Mel spectrograms extracted with librosa
 - Models to compare: a simple CNN baseline, pretrained ResNet/EfficientNet transfer learning, and CNN + LSTM/GRU hybrids
-- Planned split: 70% training / 30% validation, with speaker-disjoint splitting
 - Hardware: WSL2 on a local workstation with an NVIDIA RTX 3060 Laptop GPU (6 GB)
 
 ---
@@ -166,9 +164,10 @@ project structure.
 **Verification**
 
 - `torch.cuda.is_available() == True`; the RTX 3060 Laptop GPU is detected
-- A real 1000 x 1000 matrix multiplication on the GPU completed successfully
-- librosa extracted a 128-band Mel-spectrogram from a 2-second, 16 kHz clip (shape `(128, 63)`)
-- `src/00_environment_check.py` can be used to repeat the environment check
+- `src/00_environment_check.py` repeats the Python, package, GPU, and disk checks
+- Two extra one-off manual checks (not part of the script): a 1000 x 1000 matrix
+  multiplication on the GPU completed successfully, and librosa extracted a 128-band
+  Mel-spectrogram from a 2-second, 16 kHz clip (shape `(128, 63)`)
 
 ---
 
@@ -203,17 +202,18 @@ the data into a structure that later steps can read directly.
 
 **Caveats**
 
-- The classes are not strictly balanced. Later splits should be stratified, and
-  evaluation should not rely on accuracy alone.
-- Speaker labels are available. The validation split should therefore be
-  speaker-disjoint, so the model is tested on voices it has never seen.
+- The classes are not strictly balanced. The Step 4 split therefore keeps the fake
+  share of each split close to the global ratio, and evaluation does not rely on
+  accuracy alone.
+- Speaker labels are available. The Step 4 split is therefore speaker-disjoint, so
+  the models are tested on voices they have never seen.
 - Full duration, sample-rate, and loudness statistics are covered in Step 2.
 
-**Blog takeaway**
+**Takeaway**
 
 > The dataset contains 31,779 real and fake speech clips, with roughly 1.69 times
 > more real than fake samples. This is not an extreme imbalance, but it is enough
-> for accuracy to be misleading; stratified splitting and Recall/F1 metrics are
+> for accuracy to be misleading; a class-balanced split and Recall/F1 metrics are
 > therefore necessary. Speaker annotations also make it possible to build a
 > speaker-disjoint validation set and test whether the model learns spoofing cues
 > rather than speaker identity.
@@ -291,17 +291,17 @@ systematic real/fake differences; and visualize waveforms and Mel-spectrograms.
 - The single waveform and Mel examples are illustrative, not causal evidence. The
   averaged Mel comparison is more reliable but still descriptive; the models must
   confirm whether these differences generalize.
-- Step 3 preprocessing should therefore consider duration standardization
-  (crop/pad) and per-clip loudness normalization, while keeping a non-normalized
-  control version to measure how much performance depends on shortcuts.
-- Step 4 should use a speaker-disjoint split.
+- Step 3 therefore standardizes duration (crop/pad) and normalizes loudness per
+  clip. A non-normalized control version was planned to measure how much
+  performance depends on shortcuts, but it was not run (see Step 9 Limitations).
+- Step 4 therefore uses a speaker-disjoint split.
 
-**Blog takeaway**
+**Takeaway**
 
 > EDA revealed two shortcuts that are easier to learn than the actual spoofing
 > artifacts: fake clips are about 1.06 seconds longer within the same speaker
-> (p = 0.002), and they are about 2.4 dB quieter overall (median RMS). Loudness alone reaches a
-> median per-speaker AUC of 0.744. Without loudness normalization and duration
+> (p = 0.002), and they are about 2.4 dB quieter overall (median RMS). Loudness
+> alone reaches a median per-speaker AUC of 0.744. Without loudness normalization and duration
 > standardization, a CNN may become a "volume/length detector" that fails when the
 > speaker or recording condition changes. This is also why a speaker-disjoint
 > validation set is essential.
@@ -323,7 +323,8 @@ directly.
   clip down to avoid clipping.
 - Mel parameters: `n_mels=128`, `n_fft=2048`, `hop_length=512`, `fmin=20`,
   `fmax=8000`, `power_to_db(ref=np.max, top_db=80)`.
-- Parallelism: run with `--workers 12` (script default is 8); the full run over 31,779 clips took about 24 minutes.
+- Parallelism: run with `--workers 12` (script default is 8); the full run over
+  31,779 clips took about 24 minutes.
 - Output directory: `data/processed/mel/`.
 
 **Key numbers**
@@ -342,7 +343,8 @@ directly.
 - Median RMS before normalization: Real -25.9 dBFS, Fake -28.5 dBFS.
 - Median RMS after normalization: -23.0 dBFS for both classes.
 - Loudness-only shortcut AUC: 0.649 before normalization, 0.505 after.
-- 61.0% of clips are shorter than 4 seconds and require wrap-padding (Real 67.8%, Fake 49.4%).
+- 61.0% of clips are shorter than 4 seconds and require wrap-padding (Real 67.8%,
+  Fake 49.4%).
 - Median padding: Real 1.01 s, Fake 0.00 s. These numbers are written to
   `data/processed/mel/preprocessing_summary.txt`.
 - Residual padding shortcut: AUC = 0.399 (0.5 means no class signal).
@@ -361,24 +363,26 @@ directly.
 - The strong loudness shortcut is essentially removed, but 61% of clips still need
   repeat-padding. The padding amount retains a weak class signal, and a model could
   potentially exploit repeated content.
-- Training should therefore use augmentation such as SpecAugment or time masking,
-  and error analysis should group mistakes by padding amount.
+- Training therefore uses SpecAugment (Steps 5-7), and Step 9 groups mistakes by
+  padding amount. That analysis found no padding effect except on clips shorter
+  than 1 second.
 - Feature mean and standard deviation for neural networks must be computed on the
   training split only, never on the full dataset, to avoid validation leakage.
 - A non-normalized control feature set can be generated with
-  `--no-normalize --output-dir data/processed/mel_raw` for an ablation study.
+  `--no-normalize --output-dir data/processed/mel_raw` for an ablation study; this
+  ablation has not been run.
 - `data/processed/` is ignored by git, so generated features are not committed.
 
-**Blog takeaway**
+**Takeaway**
 
 > Per-clip RMS normalization reduced the loudness-only AUC from 0.649 to 0.505,
 > essentially removing the strongest shortcut found in EDA. Fixing the duration at
 > 4 seconds also removed the direct duration cue. However, 61% of clips are shorter
 > than 4 seconds and require repeat-padding, and the padding amount still carries a
 > weak class signal (AUC = 0.399). Preprocessing alone is therefore not enough:
-> training-time augmentation, a speaker-disjoint split, and error analysis grouped
-> by padding amount are still needed to test whether the model learns genuine
-> spoofing artifacts.
+> the later steps add training-time augmentation (Steps 5-7), a speaker-disjoint
+> split (Step 4), and error analysis grouped by padding amount (Step 9) to test
+> whether the models learn genuine spoofing artifacts.
 
 ---
 
@@ -443,10 +447,10 @@ statistics on the training split only, and build PyTorch Dataset/DataLoader obje
 - Normalization statistics come from the training split. The validation batch mean
   is slightly shifted (-0.107), which reflects the different speaker distribution
   and should not be corrected using validation data.
-- The Dataset does not apply augmentation yet. The CNN training step will add
-  SpecAugment/time masking and use the saved class weights.
+- This Dataset does not apply augmentation. The training scripts (Steps 5-7) add
+  SpecAugment and use the saved class weights.
 
-**Blog takeaway**
+**Takeaway**
 
 > The speaker-disjoint 70/30 split produced 22,233 training clips and 9,546
 > validation clips with zero speaker overlap, while preserving the class ratio
@@ -527,14 +531,13 @@ a baseline for the later transfer-learning and hybrid models.
   metrics have substantial variance. One split is not enough to claim robust
   generalization.
 - The Adam Driver failures show that aggregate Accuracy/AUC can hide speaker-level
-  collapse. Step 9 should break errors down by speaker.
+  collapse. Step 9 breaks errors down by speaker.
 - The high score may partly reflect dataset-specific generation or recording
-  artifacts; cross-dataset generalization is not guaranteed and should be discussed
-  in Steps 8-9.
-- The threshold is fixed at 0.5. In anti-fraud use, missed fake clips matter more,
-  so the recall-threshold trade-off should be analyzed later.
+  artifacts; cross-dataset generalization is not guaranteed (see Step 9 Limitations).
+- The threshold is fixed at 0.5. In anti-fraud use, missed fake clips matter more;
+  Step 9 analyzes the recall-threshold trade-off.
 
-**Blog takeaway**
+**Takeaway**
 
 > A simple CNN with only 388,834 parameters already reaches 98.52% accuracy, 97.97%
 > F1, and 99.57% ROC-AUC on unseen speakers, making log-Mel + CNN a strong baseline
@@ -569,8 +572,8 @@ CNN baseline.
 - AdamW, weight_decay=1e-4; CrossEntropyLoss with training class weights.
 - ReduceLROnPlateau on validation ROC-AUC (factor=0.5, patience=2).
 - Batch size 32, up to 12 epochs, early stopping patience 4.
-- ResNet18: best epoch 10, about 20.6 minutes.
-- EfficientNet-B0: best epoch 5, about 33.1 minutes.
+- ResNet18: best epoch 10, ran all 12 epochs (no early stop), about 20.6 minutes.
+- EfficientNet-B0: best epoch 5, stopped at epoch 9, about 33.1 minutes.
 
 **Validation comparison**
 
@@ -628,7 +631,7 @@ CNN baseline.
 - The single speaker-disjoint split contains only 14 validation speakers, so one
   result is not enough to claim that a transfer model is more robust.
 
-**Blog takeaway**
+**Takeaway**
 
 > Pretrained transfer learning raises EfficientNet-B0's F1 from 0.9797 (simple CNN)
 > to 0.9852 and ROC-AUC from 0.9957 to 0.9991, while increasing fake recall on the
@@ -722,7 +725,7 @@ the full five-model table is in Step 8)
 - Adam Driver remains hard: BiGRU/BiLSTM fake recall is only 8.0%/12.4%, far below
   EfficientNet-B0.
 
-**Blog takeaway**
+**Takeaway**
 
 > CNN+BiLSTM slightly improves F1 over the simple CNN (0.9801 vs 0.9797) but lowers
 > ROC-AUC (0.9916 vs 0.9957); CNN+BiGRU is lower on both. Both hybrids are clearly
@@ -812,7 +815,7 @@ Accuracy, Precision, Recall, F1, ROC-AUC, and Equal Error Rate (EER).
   positives, and only 47.4% fake recall on Adam Driver. The aggregate ranking does not
   remove the hard-speaker problem.
 
-**Blog takeaway**
+**Takeaway**
 
 > On the shared validation set, EfficientNet-B0 ranks first with 0.9852 F1, 0.9991
 > ROC-AUC, and 1.255% EER. ResNet18 and Simple CNN follow with EER 2.18% and 2.39%,
@@ -821,6 +824,8 @@ Accuracy, Precision, Recall, F1, ROC-AUC, and Equal Error Rate (EER).
 > and false negatives are balanced?" These are validation results and the validation
 > set was used for model selection; a truly independent test set or cross-dataset
 > evaluation is still needed before claiming generalization.
+
+---
 
 ## Step 9: Error analysis and limitations
 
@@ -835,11 +840,15 @@ project. No model is retrained; the analysis uses the saved validation predictio
 - Error by speaker: which validation speakers produce the false negatives (FN) and
   false positives (FP).
 - Error by possible shortcut: error rate grouped by wrap-padding amount, original
-  duration, and original loudness (RMS before normalization), with and without
-  Adam Driver.
+  duration, and original loudness, with and without Adam Driver. Here "original
+  loudness" is the RMS of the 4-second cropped/padded clip *before* loudness
+  normalization (`rms_before_dbfs` from Step 3), not the full-clip RMS used in Step 2.
 - Hard-speaker profile: compare Adam Driver's clips with the training clips on
   original loudness, duration, and average spectral shape (per-band mean log-Mel
-  with each clip's mean removed, as in Step 2; 1,500 random training clips per class).
+  with each clip's mean removed, as in Step 2). The spectral profile uses 1,500
+  random clips per class for the training set and for the other validation
+  speakers, and all of Adam Driver's clips. "High band" means Mel bands 96-127
+  (about 3.6-8 kHz).
 - Threshold trade-off: Recall, FPR, and Adam Driver recall when the threshold is set
   for FPR <= 0.1%, 1%, or 5% instead of 0.5.
 - Hard examples: the 10 most confident FN and FP of EfficientNet-B0, with file paths
@@ -867,19 +876,20 @@ project. No model is retrained; the analysis uses the saved validation predictio
   miss rate on fakes is 0-0.2% in every padding and duration bin. The only weak
   effect is on very short clips (3-4 s of padding, i.e. clips under 1 s): the miss
   rate there is 1.1% (6 errors over 5 models x 107 clips), and EfficientNet-B0 FPR is
-  1.9% (4 of 208) versus at most 0.7% elsewhere. The Step 3 worry about the
+  1.9% (4 of 208) versus at most 0.7% in the other padding bins. The Step 3 worry about the
   padding shortcut is not confirmed.
 - **Loudness appears to matter only through Adam Driver.** With all speakers, missed
   fakes rise sharply for originally loud fakes (above -20 dBFS: 24-51% missed), but
-  after removing Adam Driver the miss rate in the loud bins drops to 0-0.3%.
+  after removing Adam Driver the miss rate in the two loudest bins drops to 0-1.4%
+  per model (at most 2 missed clips in any bin; 0.1-0.3% averaged over the five models).
 
 **Why is Adam Driver hard?**
 
-| Group | Clips | Median original loudness (dBFS) | Median duration (s) | High-band relative energy (dB) |
+| Group | Clips | Median original loudness (dBFS) | Median duration (s) | High-band (3.6-8 kHz) relative energy (dB) |
 |---|---:|---:|---:|---:|
-| Train Real | 13,954 | -25.8 | 2.87 | -11.9 |
-| Train Fake | 8,279 | -28.7 | 4.17 | -13.5 |
-| Other validation Fake | 3,400 | -28.3 | 3.76 | -14.6 |
+| Train Real | 13,954 | -25.8 | 2.87 | -11.9 (1,500-clip sample) |
+| Train Fake | 8,279 | -28.7 | 4.17 | -13.5 (1,500-clip sample) |
+| Other validation Fake | 3,400 | -28.3 | 3.76 | -14.6 (1,500-clip sample) |
 | **Adam Driver Fake** | 137 | **-19.7** | 3.83 | **-10.1** |
 | Adam Driver Real | 80 | -18.8 | 5.87 | -15.9 |
 
@@ -907,8 +917,10 @@ project. No model is retrained; the analysis uses the saved validation predictio
 | FPR <= 1% | 0.244 | 98.5% | 1.00% | 52 | 60 | 62.8% |
 | FPR <= 5% | 0.004 | 99.7% | 4.83% | 12 | 290 | 91.2% |
 
-- Lowering the threshold helps EfficientNet-B0 recover Adam Driver's fakes, but each
-  extra caught fake costs several false alarms. For the other models, the threshold
+- Lowering the threshold helps EfficientNet-B0 recover Adam Driver's fakes, but at a
+  growing cost: moving from 0.5 to the FPR <= 1% point catches 21 more fakes for 29
+  more false alarms (about 1.4 per fake); moving on to FPR <= 5% catches 40 more
+  fakes for 230 more false alarms (about 6 per fake). For the other models, the threshold
   cannot fix the problem: at FPR <= 1%, Adam Driver recall is only 17-31%.
 
 **Figures**
@@ -952,11 +964,15 @@ project. No model is retrained; the analysis uses the saved validation predictio
   fake, so errors cannot be analyzed per generator. Adam Driver's fakes probably come
   from a different pipeline, but this cannot be confirmed.
 - **Fixed 4-second input.** Long clips are center-cropped (content outside the crop is
-  ignored) and short clips are repeated, which slightly raises false alarms on clips
-  shorter than 1 second.
+  ignored) and short clips are repeated. For EfficientNet-B0 and ResNet18 this
+  slightly raises false alarms on clips shorter than 1 second (1.9% and 1.4%); the
+  other three models have none there.
 - **Overconfident probabilities.** EER thresholds are far below 0.5 and many mistakes
   have near-0 or near-1 probabilities, so the raw probability is not a reliable
   confidence score without calibration.
+- **No shortcut ablation.** The planned control run without loudness normalization
+  (`mel_raw`) was not done, so we cannot measure directly how much a model would
+  rely on loudness if it were not removed.
 - **Correlational explanation.** The high-frequency explanation for Adam Driver is based on
   average spectra, not on listening tests or model-attribution methods (for example,
   saliency maps).
@@ -964,7 +980,7 @@ project. No model is retrained; the analysis uses the saved validation predictio
   run-to-run variance is unknown; small differences between models may not be
   meaningful.
 
-**Blog takeaway**
+**Takeaway**
 
 > Error analysis shows that the models fail in a very concentrated way: 96-99% of
 > missed fakes come from a single validation speaker, Adam Driver, and 69 of his
@@ -984,7 +1000,7 @@ project. No model is retrained; the analysis uses the saved validation predictio
 - `src/01_organize_dataset.py`: organize the flat audio files and build `dataset_index.csv`.
 - `src/02_eda.py`: run the full EDA and regenerate all Step 2 figures.
 - `src/03_preprocess.py`: build the log-Mel feature matrix and Step 3 figures
-  (`--figures-only` regenerates the figures from existing features).
+  (`--figures-only` regenerates the figures and summary from existing features).
 - `src/04_split_dataloader.py`: create the speaker-disjoint split, compute training
   statistics, and smoke-test the DataLoaders.
 - `src/05_train_cnn.py`: train and evaluate the simple CNN baseline; use

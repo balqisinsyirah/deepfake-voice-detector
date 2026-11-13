@@ -8,7 +8,9 @@
   tested on voices they never heard during training.
 - Best model so far: **EfficientNet-B0** (F1 0.9852, ROC-AUC 0.9991, EER 1.255%).
 - Main open problem: all models struggle with one validation speaker (Adam Driver);
-  even the best model catches only 47.4% of his fake clips.
+  even the best model catches only 47.4% of his fake clips. His fakes are much louder
+  in the original recordings and spectrally look more like real speech than like the
+  training fakes (Step 9).
 
 **Procedures** (status)
 
@@ -23,8 +25,7 @@
 | 6 | Model B: transfer learning (pretrained ResNet18 / EfficientNet-B0) | Done |
 | 7 | Model C: hybrid CNN + LSTM/GRU | Done |
 | 8 | Evaluation and comparison: Accuracy, Precision/Recall, F1, confusion matrix, ROC-AUC, EER | Done |
-| 9 | Error analysis and limitations | To do |
-| 10 | Blog content preparation | To do |
+| 9 | Error analysis and limitations | Done |
 
 ---
 
@@ -821,6 +822,162 @@ Accuracy, Precision, Recall, F1, ROC-AUC, and Equal Error Rate (EER).
 > set was used for model selection; a truly independent test set or cross-dataset
 > evaluation is still needed before claiming generalization.
 
+## Step 9: Error analysis and limitations
+
+**Goal:** understand *where* and *why* the five models fail, check whether the
+shortcuts found in Steps 2-3 still drive errors, and list the limitations of the
+project. No model is retrained; the analysis uses the saved validation predictions.
+
+**Method**
+
+- Error overlap: for every validation clip, count how many of the five models
+  misclassify it (threshold 0.5).
+- Error by speaker: which validation speakers produce the false negatives (FN) and
+  false positives (FP).
+- Error by possible shortcut: error rate grouped by wrap-padding amount, original
+  duration, and original loudness (RMS before normalization), with and without
+  Adam Driver.
+- Hard-speaker profile: compare Adam Driver's clips with the training clips on
+  original loudness, duration, and average spectral shape (per-band mean log-Mel
+  with each clip's mean removed, as in Step 2; 1,500 random training clips per class).
+- Threshold trade-off: Recall, FPR, and Adam Driver recall when the threshold is set
+  for FPR <= 0.1%, 1%, or 5% instead of 0.5.
+- Hard examples: the 10 most confident FN and FP of EfficientNet-B0, with file paths
+  for manual listening.
+
+**Key numbers**
+
+| Model | FN (missed fakes) | of which Adam Driver | FP (false alarms) | Main FP speaker |
+|---|---:|---:|---:|---|
+| Simple CNN | 139 | 134 (96.4%) | 2 | 2Pac (2) |
+| ResNet18 | 115 | 114 (99.1%) | 7 | Ayn Rand, Barack Obama (3 each) |
+| EfficientNet-B0 | 73 | 72 (98.6%) | 31 | Dwight Eisenhower (21) |
+| CNN+BiGRU | 129 | 126 (97.7%) | 16 | 2Pac (11) |
+| CNN+BiLSTM | 121 | 120 (99.2%) | 18 | 2Pac (12) |
+
+- **Missed fakes are almost all one speaker.** Across all models, 96-99% of FN come
+  from Adam Driver. 69 clips are missed by all five models, and all 69 are Adam
+  Driver fakes. Every one of his 137 fake clips is missed by at least one model.
+- **False alarms are model-specific.** No real clip is misclassified by three or more
+  models. EfficientNet-B0's FP are concentrated on Dwight Eisenhower (21 of 31), a
+  quiet, old recording (median original loudness -30.9 dBFS); the hybrids' FP are
+  mostly 2Pac. EfficientNet-B0 also has the most errors that no other model makes
+  (29), while the other models have only 5-10 unique errors each.
+- **Padding and duration do not drive errors.** Without Adam Driver, the average
+  miss rate on fakes is 0-0.2% in every padding and duration bin. The only weak
+  effect is on very short clips (3-4 s of padding, i.e. clips under 1 s): the miss
+  rate there is 1.1% (6 errors over 5 models x 107 clips), and EfficientNet-B0 FPR is
+  1.9% (4 of 208) versus at most 0.7% elsewhere. The Step 3 worry about the
+  padding shortcut is not confirmed.
+- **Loudness appears to matter only through Adam Driver.** With all speakers, missed
+  fakes rise sharply for originally loud fakes (above -20 dBFS: 24-51% missed), but
+  after removing Adam Driver the miss rate in the loud bins drops to 0-0.3%.
+
+**Why is Adam Driver hard?**
+
+| Group | Clips | Median original loudness (dBFS) | Median duration (s) | High-band relative energy (dB) |
+|---|---:|---:|---:|---:|
+| Train Real | 13,954 | -25.8 | 2.87 | -11.9 |
+| Train Fake | 8,279 | -28.7 | 4.17 | -13.5 |
+| Other validation Fake | 3,400 | -28.3 | 3.76 | -14.6 |
+| **Adam Driver Fake** | 137 | **-19.7** | 3.83 | **-10.1** |
+| Adam Driver Real | 80 | -18.8 | 5.87 | -15.9 |
+
+- His fake clips were recorded/produced about 9 dB louder than typical training
+  fakes; only 1.4% of training fakes are as loud (mostly Nelson Mandela, Martin
+  Luther King, and Donald Trump). Loudness itself is normalized before feature
+  extraction, so this points to a different generation or recording pipeline rather
+  than a direct loudness cue.
+- Spectrally, his fakes look more like **real** training speech than like training
+  fakes: profile distance (RMSE) 2.0 dB to Train Real vs 3.4 dB to Train Fake. Other
+  validation fakes show the opposite pattern (2.7 dB to Train Fake, 3.1 dB to Train Real).
+- His fakes have the **most** high-frequency energy of any group (-10.1 dB), even
+  more than real speech. Step 2 found that real speech has relatively more upper-band
+  energy than fakes, so a model that learned "more high-frequency energy = real"
+  would call these fakes real. This is a likely explanation, not a proven cause.
+- The models are confidently wrong: for every model except EfficientNet-B0, 59-82%
+  of his fake clips get a fake probability below 0.01 (EfficientNet-B0: 12%).
+
+**Threshold trade-off (EfficientNet-B0)**
+
+| Operating point | Threshold | Recall | FPR | Missed fakes | False alarms | Adam Driver recall |
+|---|---:|---:|---:|---:|---:|---:|
+| FPR <= 0.1% | 0.915 | 97.0% | 0.10% | 105 | 6 | 25.5% |
+| Threshold 0.5 | 0.500 | 97.9% | 0.52% | 73 | 31 | 47.4% |
+| FPR <= 1% | 0.244 | 98.5% | 1.00% | 52 | 60 | 62.8% |
+| FPR <= 5% | 0.004 | 99.7% | 4.83% | 12 | 290 | 91.2% |
+
+- Lowering the threshold helps EfficientNet-B0 recover Adam Driver's fakes, but each
+  extra caught fake costs several false alarms. For the other models, the threshold
+  cannot fix the problem: at FPR <= 1%, Adam Driver recall is only 17-31%.
+
+**Figures**
+
+- `outputs/figures/09_error_overlap.png`: (a) validation clips grouped by how many of
+  the five models misclassify them (the x-axis is a count, not a model ID); (b) each
+  model's errors split into errors only that model makes, errors shared with 1-3
+  other models, and errors shared by all five.
+- `outputs/figures/09_error_by_confounder.png`: FNR and FPR by padding, original
+  duration, and original loudness for all models.
+- `outputs/figures/09_adam_driver_profile.png`: (a) original loudness of his fakes vs
+  training clips; (b) average spectral shape relative to training fakes; (c)
+  cumulative distribution of the fake probability for his fake clips.
+- `outputs/figures/09_threshold_tradeoff.png`: Recall, FPR, and Adam Driver recall as
+  the threshold changes.
+
+**Outputs**
+
+- `outputs/logs/09_error_summary.json`: error counts, overlap, and spectral statistics.
+- `outputs/logs/09_error_overlap.csv`
+- `outputs/logs/09_error_overlap_by_model.csv`: each model's unique vs shared errors.
+- `outputs/logs/09_error_by_bin.csv`: error rate per bin, class, and model (with and
+  without Adam Driver).
+- `outputs/logs/09_speaker_profile.csv`
+- `outputs/logs/09_threshold_analysis.csv`
+- `outputs/logs/09_hard_examples.csv`: most confident mistakes with file paths.
+
+**Limitations**
+
+- **One split, few validation speakers.** Results come from a single speaker-disjoint
+  split with 14 validation speakers. One speaker (Adam Driver, 137 fake clips)
+  accounts for almost all missed fakes, so the ranking of models depends heavily on
+  which speakers happen to be in validation. Speaker-level cross-validation would
+  give a more reliable estimate.
+- **No independent test set.** The validation set was used for early stopping and
+  model selection, so all reported numbers are slightly optimistic.
+- **One dataset.** All models were trained and tested on In-the-Wild only. Nothing
+  here shows that they work on other datasets, newer voice-cloning tools, phone-call
+  audio, or compressed audio.
+- **Unknown generation methods.** The dataset does not say which tool produced each
+  fake, so errors cannot be analyzed per generator. Adam Driver's fakes probably come
+  from a different pipeline, but this cannot be confirmed.
+- **Fixed 4-second input.** Long clips are center-cropped (content outside the crop is
+  ignored) and short clips are repeated, which slightly raises false alarms on clips
+  shorter than 1 second.
+- **Overconfident probabilities.** EER thresholds are far below 0.5 and many mistakes
+  have near-0 or near-1 probabilities, so the raw probability is not a reliable
+  confidence score without calibration.
+- **Correlational explanation.** The high-frequency explanation for Adam Driver is based on
+  average spectra, not on listening tests or model-attribution methods (for example,
+  saliency maps).
+- **Single training run per model.** Each model was trained once with seed 42, so
+  run-to-run variance is unknown; small differences between models may not be
+  meaningful.
+
+**Blog takeaway**
+
+> Error analysis shows that the models fail in a very concentrated way: 96-99% of
+> missed fakes come from a single validation speaker, Adam Driver, and 69 of his
+> fakes fool all five models. His fake clips were produced much louder than typical
+> training fakes and carry more high-frequency energy than even real speech, so they
+> look "real" to models that learned high-frequency energy as a sign of authenticity.
+> Padding and duration, the shortcuts we worried about after preprocessing, do not
+> explain the errors. The lesson is that a 99% AUC on one dataset can still hide a
+> complete failure on a new voice or generation pipeline; per-speaker evaluation and
+> cross-dataset testing are essential before trusting a deepfake detector.
+
+---
+
 ## Repository notes
 
 - `src/00_environment_check.py`: environment check (English output).
@@ -838,3 +995,5 @@ Accuracy, Precision, Recall, F1, ROC-AUC, and Equal Error Rate (EER).
   trains both sequentially.
 - `src/08_evaluate_models.py`: compare every model on the shared validation split,
   compute EER and per-speaker breakdowns, and generate the Step 8 tables and figures.
+- `src/09_error_analysis.py`: error overlap, error by padding/duration/loudness, the
+  Adam Driver profile, threshold trade-off, and hard examples (Step 9).

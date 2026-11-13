@@ -342,6 +342,366 @@ statistics on the training split only, and build PyTorch Dataset/DataLoader obje
 
 ---
 
+## Step 5: Model A - simple CNN baseline
+
+**Goal:** train a small, reproducible CNN on the speaker-disjoint split and establish
+a baseline for the later transfer-learning and hybrid models.
+
+**Architecture**
+
+- Input: normalized log-Mel of shape `(1, 128, 126)`.
+- Four convolution stages: Conv2d(1->32), Conv2d(32->64), Conv2d(64->128),
+  Conv2d(128->256).
+- Each stage uses a 3x3 convolution, BatchNorm, and ReLU; the first three stages
+  use 2x2 max pooling.
+- Head: AdaptiveAvgPool2d(1), Dropout(0.4), Linear(256->2).
+- Trainable parameters: 388,834.
+
+**Training setup**
+
+- Loss: CrossEntropyLoss with training-only class weights `[0.7967, 1.3427]`.
+- Optimizer: AdamW, lr=1e-3, weight_decay=1e-4.
+- Scheduler: ReduceLROnPlateau on validation ROC-AUC, factor=0.5, patience=2.
+- Augmentation: training-time SpecAugment (2 time masks and 2 frequency masks,
+  maximum width 10); no augmentation during validation.
+- Batch size 32, up to 20 epochs, early stopping patience 5 on validation ROC-AUC.
+- Seed 42; training took about 5.4 minutes on the RTX 3060 Laptop GPU.
+- Best epoch: 12; training stopped after epoch 17.
+
+**Validation results**
+
+| Metric | Value |
+|---|---:|
+| Accuracy | 0.9852 |
+| Precision | 0.9994 |
+| Recall | 0.9607 |
+| F1 | 0.9797 |
+| ROC-AUC | 0.9957 |
+
+- Confusion matrix: `[[6007, 2], [139, 3398]]`.
+- False positives (real predicted as fake): 2.
+- False negatives (fake predicted as real): 139.
+- Mean predicted probability of fake: 0.0004 for real clips, 0.9599 for fake clips.
+- **Key anomaly:** 134 of the 139 false negatives come from a single validation
+  speaker, Adam Driver. The aggregate score hides a severe speaker-level failure.
+
+**Figures**
+
+- `outputs/figures/05_cnn_training_curves.png`: training/validation loss and validation
+  F1/ROC-AUC curves.
+- `outputs/figures/05_cnn_confusion_matrix.png`: validation confusion matrix with row
+  percentages.
+- `outputs/figures/05_cnn_roc_curve.png`: validation ROC curve.
+- `outputs/figures/05_cnn_probability_distribution.png`: predicted fake-probability
+  distributions for real and fake clips.
+
+**Outputs**
+
+- `outputs/models/05_cnn_baseline.pt`: best state dict plus feature mean/std and class
+  weights.
+- `outputs/logs/05_cnn_history.csv`: per-epoch training log.
+- `outputs/logs/05_cnn_metrics.json`: full metrics for the best epoch.
+- `outputs/logs/05_cnn_val_predictions.csv`: per-clip validation probabilities for
+  Step 9 error analysis.
+
+**Caveats**
+
+- A single speaker-disjoint split contains only 14 validation speakers, so the
+  metrics have substantial variance. One split is not enough to claim robust
+  generalization.
+- The Adam Driver failures show that aggregate Accuracy/AUC can hide speaker-level
+  collapse. Step 9 should break errors down by speaker.
+- The high score may partly reflect dataset-specific generation or recording
+  artifacts; cross-dataset generalization is not guaranteed and should be discussed
+  in Steps 8-9.
+- The threshold is fixed at 0.5. In anti-fraud use, missed fake clips matter more,
+  so the recall-threshold trade-off should be analyzed later.
+
+**Blog takeaway**
+
+> A simple CNN with only 388,834 parameters already reaches 98.52% accuracy, 97.97%
+> F1, and 99.57% ROC-AUC on unseen speakers, making log-Mel + CNN a strong baseline
+> for this dataset. However, 134 of its 139 missed fake clips come from one speaker,
+> which shows why aggregate metrics are not enough: later models must be compared on
+> hard-speaker recall and cross-domain robustness, not only on average scores.
+
+---
+
+## Step 6: Model B - pretrained ResNet / EfficientNet transfer learning
+
+**Goal:** compare ImageNet-pretrained ResNet18 and EfficientNet-B0 on the same
+speaker-disjoint split and test whether pretrained features improve on the simple
+CNN baseline.
+
+**Input and preprocessing**
+
+- Map saved log-Mel dB values from `[-80, 0]` to `[0, 1]`.
+- Resize bilinearly to `224 x 224`.
+- Repeat the single channel to three channels to match ImageNet pretrained inputs.
+- Normalize with ImageNet mean/std. During training, apply SpecAugment after
+  normalization (2 time masks and 2 frequency masks, maximum width 16).
+- No augmentation during validation.
+
+**Models and training**
+
+- ResNet18: ImageNet pretrained, replace `fc` with a two-class head; 11,177,538
+  trainable parameters.
+- EfficientNet-B0: ImageNet pretrained, replace `classifier[1]`; 4,010,110
+  trainable parameters.
+- Differential learning rates: backbone 1e-4, head 1e-3.
+- AdamW, weight_decay=1e-4; CrossEntropyLoss with training class weights.
+- ReduceLROnPlateau on validation ROC-AUC (factor=0.5, patience=2).
+- Batch size 32, up to 12 epochs, early stopping patience 4.
+- ResNet18: best epoch 10, about 20.6 minutes.
+- EfficientNet-B0: best epoch 5, about 33.1 minutes.
+
+**Validation comparison**
+
+| Model | Accuracy | Precision | Recall | F1 | ROC-AUC | Params | Train time |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| Simple CNN | 0.9852 | 0.9994 | 0.9607 | 0.9797 | 0.9957 | 0.39M | 5.4 min |
+| ResNet18 | 0.9872 | 0.9980 | 0.9675 | 0.9825 | 0.9975 | 11.18M | 20.6 min |
+| EfficientNet-B0 | **0.9891** | 0.9911 | **0.9794** | **0.9852** | **0.9991** | 4.01M | 33.1 min |
+
+- ResNet18 confusion matrix: `[[6002, 7], [115, 3422]]`.
+- EfficientNet-B0 confusion matrix: `[[5978, 31], [73, 3464]]`.
+- Total errors: Simple CNN 141 -> ResNet18 122 -> EfficientNet-B0 104.
+- False negatives (fake predicted as real): Simple CNN 139 -> ResNet18 115 ->
+  EfficientNet-B0 73.
+- False positives (real predicted as fake): Simple CNN 2 -> ResNet18 7 ->
+  EfficientNet-B0 31.
+- Adam Driver fake recall: Simple CNN **2.2%** -> ResNet18 **16.8%** ->
+  EfficientNet-B0 **47.4%**.
+- EfficientNet-B0 is best in Accuracy/F1/AUC/Recall; ResNet18 has slightly higher
+  Precision. Both trade more false positives for higher recall.
+
+**Figures**
+
+- ResNet18:
+  - `outputs/figures/06_resnet18_training_curves.png`
+  - `outputs/figures/06_resnet18_confusion_matrix.png`
+  - `outputs/figures/06_resnet18_roc_curve.png`
+  - `outputs/figures/06_resnet18_probability_distribution.png`
+- EfficientNet-B0:
+  - `outputs/figures/06_efficientnet_b0_training_curves.png`
+  - `outputs/figures/06_efficientnet_b0_confusion_matrix.png`
+  - `outputs/figures/06_efficientnet_b0_roc_curve.png`
+  - `outputs/figures/06_efficientnet_b0_probability_distribution.png`
+
+**Outputs**
+
+- `outputs/models/06_resnet18_best.pt`
+- `outputs/models/06_efficientnet_b0_best.pt`
+- `outputs/logs/06_*_history.csv`
+- `outputs/logs/06_*_metrics.json`
+- `outputs/logs/06_*_val_predictions.csv`
+
+**Caveats**
+
+- Transfer learning improves on the simple CNN, but the gain is modest
+  (F1 0.9797 -> 0.9852), suggesting that the log-Mel patterns in this dataset are
+  already easy to learn.
+- The pretrained weights come from ImageNet image classification, not audio.
+  Repeating the channel to three channels is only an interface adaptation; it does
+  not mean the model understands spectrograms in the same way as images.
+- EfficientNet-B0 has fewer parameters but trains more slowly (33.1 min vs 20.6 min)
+  because of depthwise convolutions and the deeper architecture at 224 x 224.
+- Adam Driver remains the hardest speaker: even EfficientNet-B0 reaches only 47.4%
+  fake recall and still misses 72 fake clips.
+- The single speaker-disjoint split contains only 14 validation speakers, so one
+  result is not enough to claim that a transfer model is more robust.
+
+**Blog takeaway**
+
+> Pretrained transfer learning raises EfficientNet-B0's F1 from 0.9797 (simple CNN)
+> to 0.9852 and ROC-AUC from 0.9957 to 0.9991, while increasing fake recall on the
+> hardest speaker, Adam Driver, from 2.2% to 47.4%. The gain is real but limited, and
+> EfficientNet-B0 pays for it with more false positives (31 vs 2). Pretraining helps,
+> but replacing the model alone does not solve hard speakers or cross-domain
+> robustness; those remain the focus of the next steps.
+
+---
+
+## Step 7: Model C - CNN + LSTM/GRU hybrid models
+
+**Goal:** explicitly model temporal dynamics and test whether CNN+BiGRU or
+CNN+BiLSTM can beat the simple CNN and the transfer-learning models.
+
+**Architecture**
+
+- CNN front-end: three convolution blocks with 32 -> 64 -> 128 channels; each block
+  is 3x3 Conv + BatchNorm + ReLU.
+- Pooling: 128x126 -> 64x63 -> 32x31 -> 16x31 (frequency reduced to 16 while
+  31 time steps are kept).
+- Sequence conversion: flatten the 16x128 frequency/channel grid into a 2048-dim
+  feature vector per time step.
+- Temporal layer: bidirectional GRU or bidirectional LSTM, hidden size 128.
+- Aggregation: additive attention over the 31 time steps.
+- Classifier: Dropout(0.3) + Linear(256->2).
+- Trainable parameters: CNN+BiGRU 1,766,371; CNN+BiLSTM 2,323,939.
+
+**Training setup**
+
+- Input: `(1, 128, 126)` log-Mel normalized with training-set mean/std.
+- Loss: CrossEntropyLoss with training class weights.
+- Optimizer: AdamW, lr=1e-3, weight_decay=1e-4.
+- Gradient clipping: max_norm=5.0.
+- Scheduler: ReduceLROnPlateau on validation ROC-AUC (factor=0.5, patience=2).
+- Batch size 32, up to 20 epochs, early stopping patience 5.
+- CNN+BiGRU: best epoch 5, stopped at epoch 10, about 3.0 minutes.
+- CNN+BiLSTM: best epoch 10, stopped at epoch 15, about 6.5 minutes.
+
+**Validation comparison**
+
+| Model | Accuracy | Precision | Recall | F1 | ROC-AUC | Errors | Adam Driver fake recall | Params | Time |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| Simple CNN | 0.9852 | **0.9994** | 0.9607 | 0.9797 | 0.9957 | 141 | 2.2% | 0.39M | 5.4 min |
+| ResNet18 | 0.9872 | 0.9980 | 0.9675 | 0.9825 | 0.9975 | 122 | 16.8% | 11.18M | 20.6 min |
+| EfficientNet-B0 | **0.9891** | 0.9911 | **0.9794** | **0.9852** | **0.9991** | **104** | **47.4%** | 4.01M | 33.1 min |
+| CNN+BiGRU | 0.9848 | 0.9953 | 0.9635 | 0.9792 | 0.9889 | 145 | 8.0% | 1.77M | 3.0 min |
+| CNN+BiLSTM | 0.9854 | 0.9948 | 0.9658 | 0.9801 | 0.9916 | 139 | 12.4% | 2.32M | 6.5 min |
+
+- CNN+BiGRU confusion matrix: `[[5993, 16], [129, 3408]]`.
+- CNN+BiLSTM confusion matrix: `[[5991, 18], [121, 3416]]`.
+- CNN+BiGRU: 129 false negatives and 16 false positives; CNN+BiLSTM: 121 false
+  negatives and 18 false positives.
+- BiLSTM's F1 is slightly higher than the simple CNN (0.9801 vs 0.9797), but its
+  ROC-AUC is lower (0.9916 vs 0.9957).
+- Both hybrid models have lower AUC than EfficientNet-B0, and much lower Adam Driver
+  fake recall than EfficientNet-B0's 47.4%.
+
+**Figures**
+
+- CNN+BiGRU:
+  - `outputs/figures/07_cnn_bigru_training_curves.png`
+  - `outputs/figures/07_cnn_bigru_confusion_matrix.png`
+  - `outputs/figures/07_cnn_bigru_roc_curve.png`
+  - `outputs/figures/07_cnn_bigru_probability_distribution.png`
+- CNN+BiLSTM:
+  - `outputs/figures/07_cnn_bilstm_training_curves.png`
+  - `outputs/figures/07_cnn_bilstm_confusion_matrix.png`
+  - `outputs/figures/07_cnn_bilstm_roc_curve.png`
+  - `outputs/figures/07_cnn_bilstm_probability_distribution.png`
+
+**Outputs**
+
+- `outputs/models/07_cnn_bigru_best.pt`
+- `outputs/models/07_cnn_bilstm_best.pt`
+- `outputs/logs/07_cnn_*_history.csv`
+- `outputs/logs/07_cnn_*_metrics.json`
+- `outputs/logs/07_cnn_*_val_predictions.csv`
+
+**Caveats**
+
+- The hybrid structure did not beat transfer learning. Flattening 16 frequency bins
+  x 128 channels into a 2048-dim sequence input may give the RNN too many parameters
+  and make it easier to overfit.
+- There are only 31 time steps, so the available temporal context is limited. The
+  spoofing artifacts in this dataset may be more local/frame-level, so explicit
+  sequence modeling does not necessarily help.
+- Only one hybrid design was tried. Hyperparameters such as hidden size, pooling,
+  depth, and learning rate were not exhaustively tuned; this result does not prove
+  that all CNN+RNN models are ineffective.
+- Adam Driver remains hard: BiGRU/BiLSTM fake recall is only 8.0%/12.4%, far below
+  EfficientNet-B0.
+
+**Blog takeaway**
+
+> CNN+BiLSTM slightly improves F1 over the simple CNN (0.9801 vs 0.9797) but lowers
+> ROC-AUC (0.9916 vs 0.9957); CNN+BiGRU is lower on both. Both hybrids are clearly
+> below EfficientNet-B0's 0.9991 AUC, showing that a more complex temporal model is
+> not automatically better. One likely reason is that flattening the frequency axis
+> creates a very high-dimensional, short sequence, so the RNN has little temporal
+> context to exploit; another is that the dataset's artifacts are mostly local. This
+> negative result is useful: the next focus should be hard speakers, data design, and
+> evaluation, not simply adding model complexity.
+
+---
+
+## Step 8: Model evaluation and comparison (including EER)
+
+**Goal:** compare all five models on the same speaker-disjoint validation split using
+Accuracy, Precision, Recall, F1, ROC-AUC, and Equal Error Rate (EER).
+
+**Evaluation setup**
+
+- Validation set: 9,546 clips from 14 unseen speakers.
+- Classification threshold: 0.5 for Accuracy/Precision/Recall/F1 and confusion
+  matrices.
+- EER: the error rate where FPR equals FNR; lower is better. The probability
+  threshold closest to the EER operating point is also reported.
+- Prediction probabilities come from each model's saved validation predictions. The
+  script checks that all five models use identical row indices and labels.
+- Caveat: the validation split was also used for early stopping and model selection,
+  so these numbers are mildly optimistic and are not an independent test set.
+
+**Comparison table**
+
+| Model | Accuracy | Precision | Recall | Specificity | F1 | ROC-AUC | EER (%) | EER threshold | EER rank |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| EfficientNet-B0 | **0.9891** | 0.9911 | **0.9794** | 0.9948 | **0.9852** | **0.9991** | **1.255** | 0.1491 | 1 |
+| ResNet18 | 0.9872 | 0.9980 | 0.9675 | 0.9988 | 0.9825 | 0.9975 | 2.184 | 0.0055 | 2 |
+| Simple CNN | 0.9852 | **0.9994** | 0.9607 | **0.9997** | 0.9797 | 0.9957 | 2.393 | 0.0012 | 3 |
+| CNN+BiLSTM | 0.9854 | 0.9948 | 0.9658 | 0.9970 | 0.9801 | 0.9916 | 2.834 | 0.0164 | 4 |
+| CNN+BiGRU | 0.9848 | 0.9953 | 0.9635 | 0.9973 | 0.9792 | 0.9889 | 2.838 | 0.0118 | 5 |
+
+**Key observations**
+
+- EfficientNet-B0 is best in Accuracy, Recall, F1, ROC-AUC, and EER. Its EER of
+  1.255% is clearly lower than the other models.
+- ResNet18 has higher Precision than EfficientNet-B0 (0.9980 vs 0.9911), but lower
+  Recall and a higher EER.
+- Simple CNN has the highest Precision (0.9994) and Specificity (0.9997), but misses
+  more fake clips; its EER is 2.393%.
+- Both hybrids have EER around 2.83% and rank last, consistent with the earlier
+  finding that the temporal models did not add value.
+- EER thresholds are much lower than 0.5 (0.001-0.149), showing that the models are
+  highly confident. The EER operating point is therefore different from the fixed
+  0.5-threshold metrics.
+- In anti-fraud use, lowering the threshold can reduce missed fakes at the cost of
+  more false alarms; EER provides a balanced reference point where FPR = FNR.
+
+**Figures**
+
+- `outputs/figures/08_metric_comparison.png`: metric heatmap plus EER bar chart.
+- `outputs/figures/08_roc_comparison.png`: full ROC curves and a zoom near the
+  operating region.
+- `outputs/figures/08_eer_curves.png`: DET curves with the FPR = FNR diagonal and
+  EER points.
+- `outputs/figures/08_confusion_matrices.png`: confusion matrices for all five
+  models.
+
+**Outputs**
+
+- `outputs/logs/08_model_comparison.csv`
+- `outputs/logs/08_model_comparison.json`
+- `outputs/logs/08_model_comparison.md`
+
+**Caveats**
+
+- All metrics come from the same validation split used for model selection; this is
+  not an independent test set and does not establish cross-dataset generalization.
+- There is only one speaker-disjoint split with 14 validation speakers, so small
+  differences between models (for example, ResNet18 vs Simple CNN) may not be stable.
+- EER and fixed-threshold metrics answer different questions: EER measures ranking
+  ability with balanced error rates, while 0.5-threshold metrics depend on probability
+  calibration.
+- Although EfficientNet-B0 wins overall, it still has 73 false negatives and 31 false
+  positives, and only 47.4% fake recall on Adam Driver. The aggregate ranking does not
+  remove the hard-speaker problem.
+
+**Blog takeaway**
+
+> On the shared validation set, EfficientNet-B0 ranks first with 0.9852 F1, 0.9991
+> ROC-AUC, and 1.255% EER. ResNet18 and Simple CNN follow with EER 2.18% and 2.39%,
+> while the two CNN+RNN hybrids rank last at about 2.83%. EER and AUC largely agree on
+> the ordering, but EER directly answers "how high is the error when false positives
+> and false negatives are balanced?" These are validation results and the validation
+> set was used for model selection; a truly independent test set or cross-dataset
+> evaluation is still needed before claiming generalization.
+
+---
+
 ## Key concepts
 
 **Why can accuracy be misleading with a 63/37 split?**
@@ -370,3 +730,11 @@ honest estimate of generalization.
   (`--figures-only` regenerates the figures from existing features).
 - `src/04_split_dataloader.py`: create the speaker-disjoint split, compute training
   statistics, and smoke-test the DataLoaders.
+- `src/05_train_cnn.py`: train and evaluate the simple CNN baseline; use
+  `--smoke-test` for a single forward pass.
+- `src/06_train_transfer.py`: fine-tune pretrained ResNet18 and EfficientNet-B0;
+  `--model both` trains both sequentially.
+- `src/07_train_hybrid.py`: train CNN+BiGRU and CNN+BiLSTM hybrids; `--model both`
+  trains both sequentially.
+- `src/08_evaluate_models.py`: compare every model on the shared validation split,
+  compute EER, and generate the Step 8 tables and figures.

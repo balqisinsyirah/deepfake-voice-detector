@@ -234,12 +234,15 @@ systematic real/fake differences; and visualize waveforms and Mel-spectrograms.
 - Shortcut analysis: ROC-AUC of duration-only and loudness-only classifiers,
   including within-speaker variants and per-speaker AUC.
 - Visualization sample: one real and one fake clip from the same speaker
-  (Alec Guinness), each close to 4 seconds and close to its class median loudness.
-- Mean Mel: 120 random 4-second clips per class; each clip's mean energy was
+  (Alec Guinness), each 3.5-4.5 seconds long and the closest to the median loudness
+  of that speaker's clips of the same class and length range.
+- Mean Mel: 120 randomly sampled clips per class (seed 42). Each clip is cut to its
+  first 4 seconds, or zero-padded at the end if shorter; each clip's mean energy was
   subtracted before averaging so that loudness would not dominate the comparison.
 - Outputs: `data/processed/audio_stats.csv`, `eda_label_summary.csv`,
   `eda_tests.csv`, `eda_speaker_summary.csv`, `eda_speaker_tests.csv`,
-  `eda_shortcut_auc.csv`, and `eda_per_speaker_auc.csv`.
+  `eda_shortcut_auc.csv`, and `eda_per_speaker_auc.csv`; a text summary in
+  `outputs/eda_summary.txt`.
 
 **Key numbers**
 
@@ -277,8 +280,8 @@ systematic real/fake differences; and visualize waveforms and Mel-spectrograms.
 | `outputs/figures/02_speaker_duration_scatter.png` | Most speakers lie above the y = x line: fake clips are usually longer even within the same speaker. |
 | `outputs/figures/02_shortcut_auc_by_speaker.png` | Loudness is a strong shortcut for many speakers, with AUC values close to 0 or 1. |
 | `outputs/figures/02_waveform_comparison.png` | Waveforms from the same speaker look different in amplitude and envelope. |
-| `outputs/figures/02_mel_comparison.png` | The fake example shows less high-frequency energy and stronger harmonic stripes; this is illustrative only. |
-| `outputs/figures/02_mean_mel_by_class.png` | After removing loudness, the average spectra still differ, with real speech showing relatively more energy in the upper bands; the models must confirm whether this difference is robust. |
+| `outputs/figures/02_mel_comparison.png` | The fake example has a much darker background (lower noise floor) and less high-frequency energy; this is illustrative only. |
+| `outputs/figures/02_mean_mel_by_class.png` | After removing loudness, the average spectra still differ, with real speech showing relatively more energy in the upper bands. The difference map after about 2 seconds mostly reflects zero padding (real clips are shorter), not a spectral difference. |
 
 **Caveats**
 
@@ -289,8 +292,11 @@ systematic real/fake differences; and visualize waveforms and Mel-spectrograms.
 - Speaker composition is strongly correlated with class balance. A random file-level
   split would leak both speaker identity and the duration/loudness shortcuts.
 - The single waveform and Mel examples are illustrative, not causal evidence. The
-  averaged Mel comparison is more reliable but still descriptive; the models must
-  confirm whether these differences generalize.
+  averaged Mel comparison is more reliable but still descriptive, and it is partly
+  confounded by clip length: this EDA figure zero-pads short clips, and real clips
+  are shorter, so the later time frames mix in silence. The upper-band difference
+  itself is confirmed in Step 9 on the wrap-padded model inputs (training real
+  -11.9 dB vs training fake -13.5 dB relative high-band energy).
 - Step 3 therefore standardizes duration (crop/pad) and normalizes loudness per
   clip. A non-normalized control version was planned to measure how much
   performance depends on shortcuts, but it was not run (see Step 9 Limitations).

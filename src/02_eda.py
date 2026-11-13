@@ -9,7 +9,7 @@ Outputs:
     data/processed/eda_label_summary.csv    summary by class
     data/processed/eda_speaker_summary.csv  summary by speaker
     data/processed/eda_tests.csv            statistical test results
-    outputs/figures/02_*.png                figures for the blog
+    outputs/figures/02_*.png                figures for the progress report
     outputs/eda_summary.txt                 text summary
 """
 
@@ -382,7 +382,7 @@ def plot_loudness(df: pd.DataFrame, summary: pd.DataFrame) -> None:
     for label in ["real", "fake"]:
         med = summary.loc[label, "rms_median"]
         axes[0].axvline(med, color=COLORS[label], ls="--", lw=1.5)
-    # The two medians are only ~2.5 dB apart, so stagger the labels in the top-right corner
+    # The two medians are only ~2.4 dB apart, so stagger the labels in the top-right corner
     axes[0].text(
         0.98,
         0.95,

@@ -208,7 +208,8 @@ def save_config(output_dir: Path, n_samples: int, normalize: bool) -> None:
 
 
 def plot_loudness_before_after(meta: pd.DataFrame, output_dir: Path) -> None:
-    fig, axes = plt.subplots(1, 2, figsize=(12.5, 4.5), sharey=True)
+    # Independent y axes: the post-normalization spike would otherwise flatten the left panel
+    fig, axes = plt.subplots(1, 2, figsize=(12.5, 4.5))
     for ax, column, title in [
         (axes[0], "rms_before_dbfs", "Before normalization"),
         (axes[1], "rms_after_dbfs", "After normalization"),
@@ -301,7 +302,7 @@ def plot_examples(meta: pd.DataFrame, features_path: Path, output_dir: Path) -> 
     # Use a dedicated colorbar axis so it never covers the Mel panels
     fig = plt.figure(figsize=(13.5, 7))
     gs = fig.add_gridspec(
-        2, 3, width_ratios=[1, 1, 0.045], hspace=0.28, wspace=0.18
+        2, 3, width_ratios=[1, 1, 0.045], hspace=0.28, wspace=0.3
     )
     wave_axes = [fig.add_subplot(gs[0, 0]), fig.add_subplot(gs[0, 1])]
     mel_real_ax = fig.add_subplot(gs[1, 0])

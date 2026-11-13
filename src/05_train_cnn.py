@@ -31,6 +31,7 @@ import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+from matplotlib.patches import Patch
 import numpy as np
 import pandas as pd
 import seaborn as sns
@@ -328,11 +329,16 @@ def plot_probabilities(labels: np.ndarray, probs: np.ndarray, output_path: Path)
         alpha=0.35,
         ax=ax,
     )
-    ax.axvline(0.5, color="black", ls="--", lw=1, label="Decision threshold 0.5")
+    threshold_line = ax.axvline(0.5, color="black", ls="--", lw=1, label="Decision threshold 0.5")
     ax.set_xlabel("Predicted probability of fake")
     ax.set_ylabel("Density")
     ax.set_title("Validation probability distribution")
-    ax.legend(loc="upper center")
+    # histplot's hue legend is replaced below, so rebuild the class entries by hand
+    class_handles = [
+        Patch(facecolor=PALETTE[name], edgecolor=PALETTE[name], alpha=0.35, label=name)
+        for name in CLASS_NAMES
+    ]
+    ax.legend(handles=class_handles + [threshold_line], loc="upper center", ncol=3)
     fig.tight_layout()
     fig.savefig(output_path)
     plt.close(fig)

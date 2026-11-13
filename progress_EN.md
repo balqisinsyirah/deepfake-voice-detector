@@ -346,7 +346,9 @@ directly.
 | Invalid values | no NaN, no Inf |
 | Metadata rows | 31,779 (no read errors) |
 
-- Median RMS before normalization: Real -25.9 dBFS, Fake -28.5 dBFS.
+- Median RMS before normalization: Real -25.9 dBFS, Fake -28.5 dBFS. These are
+  measured on the 4-second cropped/padded clip, so they differ slightly from the
+  full-clip values in Step 2 (-26.1 / -28.5 dBFS).
 - Median RMS after normalization: -23.0 dBFS for both classes.
 - Loudness-only shortcut AUC: 0.649 before normalization, 0.505 after.
 - 61.0% of clips are shorter than 4 seconds and require wrap-padding (Real 67.8%,

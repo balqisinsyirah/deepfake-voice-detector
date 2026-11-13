@@ -56,4 +56,4 @@ Waveform / Mel example:
 Alec Guinness  real       Real   818.wav  4.053063 -25.299363   data/raw/release_in_the_wild/real/818.wav
 Alec Guinness  fake       Fake 14458.wav  4.223000 -30.266716 data/raw/release_in_the_wild/fake/14458.wav
 
-Mean Mel figure: 120 random 4-second clips per class; each clip's mean energy is subtracted before averaging. Red in the difference map means higher relative energy for real speech.
+Mean Mel figure: 120 random clips per class, each cut to its first 4 seconds or zero-padded at the end if shorter; each clip's mean energy is subtracted before averaging. Red in the difference map means higher relative energy for real speech. Real clips are shorter, so later time frames partly reflect padding.

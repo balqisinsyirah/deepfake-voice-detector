@@ -593,7 +593,7 @@ def plot_mel_pair(pair: pd.DataFrame, speaker: str) -> None:
 
 
 def mean_mel_by_class(df: pd.DataFrame, n_per_class: int = 120) -> tuple[dict, np.ndarray, float]:
-    """Average 4-second log-Mel over 120 random clips per class to reduce single-clip noise."""
+    """Average log-Mel over 120 random clips per class (first 4 s, zero-padded if shorter)."""
     means = {}
     for label in ["real", "fake"]:
         paths = df[df.label == label].sample(n_per_class, random_state=42)["path"].tolist()
@@ -649,7 +649,7 @@ def plot_mean_mel(means: dict, diff: np.ndarray, limit: float) -> None:
     fig.colorbar(img, ax=axes[:2], format="%+2.0f dB", label="Relative energy (dB)")
     fig.colorbar(img2, ax=axes[2], label="Difference (dB)")
     fig.suptitle(
-        "Mean 4-second Mel-spectrogram over 120 random clips per class "
+        "Mean Mel-spectrogram over 120 random clips per class, first 4 s, zero-padded if shorter "
         "(per-clip mean removed; red = higher relative energy)",
         fontsize=12,
     )
@@ -718,8 +718,9 @@ def main() -> None:
     plot_mean_mel(means, diff, limit)
 
     mel_note = (
-        "Mean Mel figure: 120 random 4-second clips per class; each clip's mean energy is "
-        "subtracted before averaging. Red in the difference map means higher relative energy for real speech."
+        "Mean Mel figure: 120 random clips per class, each cut to its first 4 seconds or zero-padded at the end "
+        "if shorter; each clip's mean energy is subtracted before averaging. Red in the difference map means "
+        "higher relative energy for real speech. Real clips are shorter, so later time frames partly reflect padding."
     )
     save_summary_text(df, summary, tests, spk_tests, shortcut, spk_auc, spk, pair, mel_note)
     print(f"\nFigures saved to {FIG_DIR}")

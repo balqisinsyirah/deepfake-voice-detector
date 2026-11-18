@@ -20,12 +20,15 @@ In this project, we use the In-the-Wild dataset introduced by Müller et al. (20
 The dataset was processed to optimize outcomes for evaluating deepfake detection and voice anti-spoofing machine-learning models. Raw audio files were processed using librosa to extract Mel-spectrogram features, transforming temporal audio waveforms into time-frequency representations. In addition, the dataset is split into 70% for training and 30% for validation. This step standardizes the input pipeline, improving the models' ability to generalize across realistic, in-the-wild audio samples. The goal of preprocessing the dataset was to ensure consistency, eliminate noise variances, and maintain compatibility with the input requirements of our selected image-based and hybrid neural network architectures using AWS SageMaker Studio Lab.
 
 ## Methodology
-
+### Methods used from AIML libraries
+### Model from AIML libraries
+### Code / features explanations
 
 ## Evaluation & Analysis
-
+Graphs, tables, any statistics (probably the output)
 
 ## Related Work
+the tools, libraries, blog, any documentations used for this project
 Voice Spoofing in the Wild: A Large-Scale Dataset and Evaluation of Countermeasures, Dominik Müller et al., 2022, https://huggingface.co/papers/2203.16263
 
 ## Conclusion : Discussion

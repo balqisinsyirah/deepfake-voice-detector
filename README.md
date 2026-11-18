@@ -23,7 +23,7 @@ The dataset was processed to optimize outcomes for evaluating deepfake detection
 ### Methods used from AIML libraries
 
 ### Selected CNN Model: EfficientNet-B0
-To build our final deepfake voice detector, EfficientNet-B0 (Tan & Le, 2019) was selected as the optimal model after comparing custom baselines and traditional transfer-learning architectures.
+To build our final deepfake voice detector, EfficientNet-B0 was selected as the optimal model after comparing custom baselines and traditional transfer-learning architectures.
 
 1. Architectural Design & Rationale
    EfficientNet-B0 introduces a paradigm shift from traditional convolutional networks by utilizing compound scaling, uniformly balancing three critical dimensions: depth (layer count), width (channel capacity),    and resolution ($224 \times 224$ input size).

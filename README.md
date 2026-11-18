@@ -29,6 +29,13 @@ EfficientNet-B0 employs a compound scaling method that systematically and unifor
 
 To adapt our 128×126 log-Mel spectrograms for EfficientNet-B0, the decibel features (−80 dB to 0 dB) were normalized to [0,1] range, bilinearly resized to 224×224 pixels, and replicated across three channels to match ImageNet pre-trained input requirements. We replaced the default classification head (classifier[1]) with a two-class linear output layer and fine-tuned the model using differential learning rates (backbone 1e-4, head 1e-3), the AdamW optimizer, class-weighted CrossEntropyLoss, and training-time SpecAugment regularization.
 
+### Feature : Extraction of log-Mel spectrograms using librosa
+For feature extraction, raw audio waveforms were transformed into two-dimensional log-Mel spectrograms using the librosa audio processing library. Rather than feeding raw, high-dimensional time-domain signals directly into the network, converting speech into time-frequency representations enables the convolutional architecture to analyze both spectral distribution and temporal dynamics simultaneously.
+
+To ensure uniformity across the dataset, all audio recordings were first standardized to a mono channel at a fixed sampling rate of 16 kHz and trimmed or zero-padded to a consistent 4-second duration (64,000 samples). Using librosa, each standardized waveform was segmented into overlapping frames via a Short-Time Fourier Transform (STFT) with an FFT window size of 2,048 and a hop length of 512 samples, mapping the linear frequency spectrum onto 128 Mel-scale filter banks (up to a maximum frequency of 8,000 Hz) to mirror human auditory perception.
+
+Finally, the resulting power spectrogram magnitudes were converted into logarithmic decibel (dB) scale (librosa.power_to_db) relative to peak power and clipped to a bounded range of −80 dB to 0 dB. This compression highlights subtle high-frequency artifacts and vocoder inconsistencies characteristic of synthetic speech, yielding a fixed-size 128×126 time-frequency matrix for every audio clip.
+
 ### Code / features explanations
 
 ## Evaluation & Analysis

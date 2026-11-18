@@ -23,26 +23,11 @@ The dataset was processed to optimize outcomes for evaluating deepfake detection
 ### Methods used from AIML libraries
 
 ### Selected CNN Model: EfficientNet-B0
-To build our final deepfake voice detector, EfficientNet-B0 was selected as the optimal model after comparing custom baselines and traditional transfer-learning architectures.
+For this project, we selected EfficientNet-B0 as our core convolutional neural network (CNN) architecture for deepfake voice detection. Originally designed via automated Neural Architecture Search (NAS), EfficientNet-B0 is well-regarded for its strong 2D spatial feature extraction capabilities and compact parameter footprint (4.01 million trainable parameters), making it well-suited for the computational demands of analyzing audio spectrograms.
 
-1. Architectural Design & Rationale
-   EfficientNet-B0 introduces a paradigm shift from traditional convolutional networks by utilizing compound scaling, uniformly balancing three critical dimensions: depth (layer count), width (channel capacity),    and resolution ($224 \times 224$ input size).
+EfficientNet-B0 employs a compound scaling method that systematically and uniformly balances three critical network dimensions: depth (number of layers), width (channel capacity), and resolution (224×224 input size). Built upon Mobile Inverted Bottleneck Convolutions (MBConv), squeeze-and-excitation modules, and self-gated Swish activation functions, this architecture achieves high representational capacity with fewer parameters than conventional networks. Its ability to efficiently capture subtle time-frequency variations makes it ideal for identifying the fine-grained spectral artifacts typical of synthetic speech.
 
-   - MBConv Blocks: The network relies on Mobile Inverted Bottleneck Convolutions (MBConv) incorporating depthwise separable convolutions and squeeze-and-excitation (SE) modules. This allows it to capture fine-       grained, complex time-frequency spectrogram patterns while maintaining a lightweight footprint of $4.01\text{ million}$ trainable parameters (significantly more parameter-efficient than heavier            architectures like ResNet18's $11.18\text{ million}$).
-   - Swish Activation & NAS: It employs the self-gated Swish activation function in place of standard ReLU and was optimized using an automated Neural Architecture Search (NAS) to maximize accuracy with minimal       computational overhead.
-
-2. Input Adaptation & Training Setup
-   Because computer vision models expect multi-channel 2D image tensors, log-Mel spectrograms ($128 \times 126$ matrices) underwent specialized preprocessing:
-   - Normalization & Resizing: Saved dB values ($-80\text{ dB}$ to $0\text{ dB}$) were scaled to $[0, 1]$ and bilinearly resized to $224 \times 224$ pixels.
-   - Channel Replication: The single-channel spectrogram was replicated across three channels to match ImageNet pre-trained expectations and normalized using standard ImageNet mean and standard deviation tensors.
-   - Optimization: Training utilized differential learning rates ($\text{backbone } 1\text{e-}4$, $\text{head } 1\text{e-}3$), the AdamW optimizer (weight decay $1\text{e-}4$), class-weighted CrossEntropyLoss, a ReduceLROnPlateau scheduler, and training-time SpecAugment (time and frequency masking). It completed training in $33.1\text{ minutes}$ (best epoch $5$).
-  
-3. Performance & Validation Validation
-On our speaker-disjoint validation split ($9,546$ clips across $14$ unseen speakers), EfficientNet-B0 achieved top-tier evaluation scores:
-- Accuracy: 0.9891
-- F1-Score: 0.9852
-- ROC-AUC: 0.9991
-- Equal Error Rate (EER): 1.255\%
+To adapt our 128×126 log-Mel spectrograms for EfficientNet-B0, the decibel features (−80 dB to 0 dB) were normalized to [0,1] range, bilinearly resized to 224×224 pixels, and replicated across three channels to match ImageNet pre-trained input requirements. We replaced the default classification head (classifier[1]) with a two-class linear output layer and fine-tuned the model using differential learning rates (backbone 1e-4, head 1e-3), the AdamW optimizer, class-weighted CrossEntropyLoss, and training-time SpecAugment regularization.
 
 ### Code / features explanations
 

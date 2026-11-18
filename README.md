@@ -38,7 +38,11 @@ To build our final deepfake voice detector, EfficientNet-B0 was selected as the 
    - Optimization: Training utilized differential learning rates ($\text{backbone } 1\text{e-}4$, $\text{head } 1\text{e-}3$), the AdamW optimizer (weight decay $1\text{e-}4$), class-weighted CrossEntropyLoss, a ReduceLROnPlateau scheduler, and training-time SpecAugment (time and frequency masking). It completed training in $33.1\text{ minutes}$ (best epoch $5$).
   
 3. Performance & Validation Validation
-On our speaker-disjoint validation split ($9,546$ clips across $14$ unseen speakers), EfficientNet-B0 achieved top-tier evaluation scores:Accuracy: $0.9891$F1-Score: $0.9852$ROC-AUC: $0.9991$Equal Error Rate (EER): $1.255\%$
+On our speaker-disjoint validation split ($9,546$ clips across $14$ unseen speakers), EfficientNet-B0 achieved top-tier evaluation scores:
+- Accuracy: 0.9891
+- F1-Score: 0.9852
+- ROC-AUC: 0.9991
+- Equal Error Rate (EER): 1.255\%
 
 ### Code / features explanations
 

@@ -32,15 +32,11 @@
 
 ## I. Introduction
 
-### Motivation: why are we doing this?
-Generative AI can now copy a person's voice from just a few seconds of audio. Scammers use these **voice clones** to pretend to be a family member or a boss and trick people into sending money. A recent study by researchers from Harvard and Meta found that about **1 in 6 adults** could be fooled by an emotional AI voice-clone scam, such as a fake "family emergency" call **[TODO: add source to Related Work]**. As this technology gets cheaper, scam calls can be fully automated and sent to millions of people, so we need detectors that are automatic too.
+The rapid advancement of generative AI has fueled a surge in sophisticated voice phishing scams, where synthetic voice clones impersonate individuals using deepfake technology to deceive victims into financial fraud. Recent studies by researchers from Harvard and Meta reveal that approximately 1 in 6 adults could comply with emotional and relationship-based AI voice-cloning scams, such as a family emergency, which is more persuasive than the typical call center impersonation **[TODO: add source]**. Researchers warn that as this technology spreads, scam calls will become fully automated and the cost of mass dialing will plummet, making scalable defense mechanisms urgent.
 
-### Goal: what do we want to see at the end?
-We want to build a **baseline deepfake voice detector**: a model that listens to a short speech clip and answers *"real or fake?"*. To find out what works best, we train and compare **five different neural networks** on the same data and ask:
+Our objective is to develop a baseline deepfake voice detector by training and comparing the performance of various models to combat this increasing problem. To accomplish this, we use the [In-the-Wild dataset](https://huggingface.co/datasets/mueller91/In-The-Wild) introduced by Müller et al. (2022), which contains 31,779 real and fake audio recordings from public figures and is released under CC BY-SA 4.0. We split the dataset by speaker into two parts: 70% for training and 30% for the validation set, process raw audio files via librosa to extract log-Mel spectrogram features, and train image-based and hybrid neural network architectures on a local NVIDIA RTX 3060 GPU.
 
-1. Which model detects fake voices most accurately?
-2. Does the model still work on **people it has never heard before**?
-3. When the model is wrong, **why** is it wrong?
+Once trained, the models are thoroughly evaluated to assess their effectiveness, including an error analysis of where and why they fail. Ultimately, this project explores practical data-driven pipelines to safeguard individuals against automated audio-based security threats.
 
 ---
 

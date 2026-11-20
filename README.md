@@ -41,7 +41,7 @@ In this section, the code used in this project will be described. For detailed e
 
 #### [00_environment_check.py](https://github.com/balqisinsyirah/deepfake-voice-detector/blob/2b9b3417665fc2711cd0d1dfbbd0ddcde65fbe1a/src/00_environment_check.py)
 
-#### [01_organize_dataset.py][https://github.com/balqisinsyirah/deepfake-voice-detector/blob/2b9b3417665fc2711cd0d1dfbbd0ddcde65fbe1a/src/00_environment_check.py]
+#### [01_organize_dataset.py](https://github.com/balqisinsyirah/deepfake-voice-detector/blob/2b9b3417665fc2711cd0d1dfbbd0ddcde65fbe1a/src/01_organize_dataset.py)
 
 #### [02_eda.py](https://github.com/balqisinsyirah/deepfake-voice-detector/blob/2b9b3417665fc2711cd0d1dfbbd0ddcde65fbe1a/src/02_eda.py)
 

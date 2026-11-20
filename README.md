@@ -39,7 +39,7 @@ Finally, the resulting power spectrogram magnitudes were converted into logarith
 ### Brief code explanations
 In this section, the code used in this project will be described. For detailed explanations of all parts of the code, please visit _______ . The main files of our project and their tasks are:
 
-#### 00_environment_check.py
+#### [00_environment_check.py](https://github.com/balqisinsyirah/deepfake-voice-detector/blob/2b9b3417665fc2711cd0d1dfbbd0ddcde65fbe1a/src/00_environment_check.py)
 
 #### 01_organize_dataset.py
 

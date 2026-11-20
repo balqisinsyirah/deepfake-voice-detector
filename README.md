@@ -31,6 +31,8 @@ We use the **In-the-Wild** dataset by Müller et al. (2022), from the paper *"Do
 - **Download:** [Hugging Face – mueller91/In-The-Wild](https://huggingface.co/datasets/mueller91/In-The-Wild) (also mirrored on [Kaggle](https://www.kaggle.com/datasets/abdallamohamed312/in-the-wild-audio-deepfake))
 - **What's inside:** real and fake speech clips of **54 public figures** (politicians, actors, celebrities), collected from social media and video sites. "In the wild" means the audio is messy and realistic, not recorded in a clean studio.
 
+<div align="center">
+
 | | Real (bona-fide) | Fake (spoof) | Total |
 |---|---:|---:|---:|
 | Clips | 19,963 (62.8%) | 11,816 (37.2%) | **31,779** |
@@ -38,7 +40,9 @@ We use the **In-the-Wild** dataset by Müller et al. (2022), from the paper *"Do
 | Median clip length | 3.0 s | 4.1 s | |
 | Median loudness | −26.1 dBFS | −28.5 dBFS | |
 
-All clips are 16 kHz mono, with no clipping.
+</div>
+<p align="center">Figure 1. Overview of the In-the-Wild dataset statistics by class.</p>
+<p align="center">*All clips are 16 kHz mono, with no clipping.</p>
 
 **Two things we noticed while exploring the data:**
 
@@ -111,6 +115,8 @@ Studies the mistakes without retraining anything: whether the models fail on the
 ## IV. Evaluation & Analysis
 All models were tested on the same 9,546 validation clips from 14 unseen speakers. Precision tells us how many of the clips flagged as fake were really fake, recall tells us how many of the fake clips were caught, and F1 balances the two. ROC-AUC measures how well the model ranks fake clips above real ones (1.0 is perfect). EER (Equal Error Rate) is the error rate at the point where false alarms and missed fakes are equal, so lower is better.
 
+<div align="center">
+
 | Model | Accuracy | Precision | Recall | F1 | ROC-AUC | EER |
 |---|---:|---:|---:|---:|---:|---:|
 | EfficientNet-B0 | **98.91%** | 99.11% | **97.94%** | **0.9852** | **0.9991** | **1.26%** |
@@ -119,8 +125,9 @@ All models were tested on the same 9,546 validation clips from 14 unseen speaker
 | CNN + BiLSTM | 98.54% | 99.48% | 96.58% | 0.9801 | 0.9916 | 2.83% |
 | CNN + BiGRU | 98.48% | 99.53% | 96.35% | 0.9792 | 0.9889 | 2.84% |
 
-add a pic here later
-*Figure 3. Comparison of all five models.*
+</div>
+
+<p align="center">*Figure 3. Comparison of all five models.*</p>
 
 <p align="center"><img width="695" height="550" alt="08_eer_curves" src="https://github.com/user-attachments/assets/870a82c8-9630-4873-b611-fcfe93cc837f" /></p>
 
@@ -130,12 +137,12 @@ EfficientNet-B0 is the best model overall, with the highest recall, F1 and ROC-A
 
 Although the overall scores look almost perfect, breaking them down by speaker revealed a major weakness. Between 96% and 99% of the missed fakes in every model came from a single speaker, Adam Driver, and 69 of his fake clips fooled all five models. Even the best model caught only 47.4% of his fakes, while for every other validation speaker the models caught almost all fakes. His fake clips contain more high-frequency energy than even real speech, and since the models had learned that strong high frequencies usually mean a real voice, they confidently labelled his fakes as real. His fakes were also originally much louder than the training fakes, which suggests they were made with a different voice-cloning tool. After removing Adam Driver, the errors no longer depended on clip length or loudness, which confirms that our preprocessing successfully removed those shortcuts.
 
-<p align="center"><img width="3574" height="983" alt="09_adam_driver_profile" src="https://github.com/user-attachments/assets/a605dccf-d927-4a9d-aa32-d9e3e5b89baf" /></p>
+<p align="center"><img width="3999" height="1100" alt="09_adam_driver_profile" src="https://github.com/user-attachments/assets/a605dccf-d927-4a9d-aa32-d9e3e5b89baf" /></p>
 <p align="center">*Figure 5. Adam Driver's fake clips compared with the training data.*</p>
 
 Finally, by default a clip is labelled fake when the model's fake probability is above 0.5. Lowering this threshold catches more fakes but also produces more false alarms. For EfficientNet-B0, lowering it to 0.244 raised overall recall from 97.9% to 98.5% and Adam Driver recall from 47.4% to 62.8%, at the cost of 29 additional false alarms. In a scam-call setting, where missing a fake is worse than a false alarm, a lower threshold may be the better choice.
 
-<p align="center"><img width="3573" height="983" alt="09_threshold_tradeoff" src="https://github.com/user-attachments/assets/38d63ed3-2470-4b91-8b32-a41661d0be80" /></p>
+<p align="center"><img width="3998" height="1100" alt="09_threshold_tradeoff" src="https://github.com/user-attachments/assets/38d63ed3-2470-4b91-8b32-a41661d0be80" /></p>
 <p align="center">*Figure 6. Effect of decision threshold trade-off on overall fake recall, FPR and Adam Driver fake recall across all five models.*</p>
 
 ## V. Related Work

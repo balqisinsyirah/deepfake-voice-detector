@@ -135,6 +135,9 @@ Although the overall scores look almost perfect, breaking them down by speaker r
 
 Finally, by default a clip is labelled fake when the model's fake probability is above 0.5. Lowering this threshold catches more fakes but also produces more false alarms. For EfficientNet-B0, lowering it to 0.244 raised overall recall from 97.9% to 98.5% and Adam Driver recall from 47.4% to 62.8%, at the cost of 29 additional false alarms. In a scam-call setting, where missing a fake is worse than a false alarm, a lower threshold may be the better choice.
 
+<img width="3573" height="983" alt="09_threshold_tradeoff" src="https://github.com/user-attachments/assets/38d63ed3-2470-4b91-8b32-a41661d0be80" />
+*Figure 6. Effect of decision threshold trade-off on overall fake recall, false positive rate (FPR), and Adam Driver fake recall across all five models.*
+
 ## V. Related Work
 The tools, libraries, papers and documentation used for this project:
 - Heiding, F., Mayrink Verdun, C., Lermen, S., Kao, A., Albiero, V., Deason, L., Veliche, I.-E., & Lehane, C. (2026). Evaluating AI Models' Capability to Automate Voice Phishing Attacks. *Expert Systems with Applications*, 332. https://doi.org/10.1016/j.eswa.2026.133620

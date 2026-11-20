@@ -26,14 +26,24 @@ Our objective is to develop a baseline deepfake voice detector by training and c
 Once trained, the models are thoroughly evaluated to assess their effectiveness, including an error analysis of where and why they fail. Ultimately, this project explores practical data-driven pipelines to safeguard individuals against automated audio-based security threats.
 
 ## II. Datasets
-We use the In-the-Wild dataset introduced by Müller et al. (2022) in their paper "Does Audio Deepfake Detection Generalize?" (Interspeech 2022). It contains 31,779 real and fake speech clips of 54 public figures, such as politicians and celebrities, collected from social media and video platforms. In total there are about 38 hours of audio: 19,963 real clips (62.8%) and 11,816 fake clips (37.2%). All clips are 16 kHz mono audio.
+We use the **In-the-Wild** dataset by Müller et al. (2022), from the paper *"Does Audio Deepfake Detection Generalize?"* (Interspeech 2022). It is free to use under the CC BY-SA 4.0 license.
 
-Because there are more real clips than fake ones, a model that always answers "real" would already be 63% accurate. For this reason we do not rely on accuracy alone, and also report precision, recall, F1, ROC-AUC and EER.
+- **Download:** [Hugging Face – mueller91/In-The-Wild](https://huggingface.co/datasets/mueller91/In-The-Wild) (also mirrored on [Kaggle](https://www.kaggle.com/datasets/abdallamohamed312/in-the-wild-audio-deepfake))
+- **What's inside:** real and fake speech clips of **54 public figures** (politicians, actors, celebrities), collected from social media and video sites. "In the wild" means the audio is messy and realistic, not recorded in a clean studio.
 
-While exploring the data, we found two "shortcuts" that a model could use to cheat. Fake clips are on average about 1 second longer and about 2.4 dB quieter than real clips. A model could learn the simple rule "long and quiet means fake" instead of learning what a synthetic voice actually sounds like. We remove both shortcuts during preprocessing (Section III).
+| | Real (bona-fide) | Fake (spoof) | Total |
+|---|---:|---:|---:|
+| Clips | 19,963 (62.8%) | 11,816 (37.2%) | **31,779** |
+| Hours of audio | 20.8 h | 17.1 h | 37.9 h |
+| Median clip length | 3.0 s | 4.1 s | |
+| Median loudness | −26.1 dBFS | −28.5 dBFS | |
 
-![Loudness distribution](outputs/figures/02_loudness_distribution.png)
-*Figure 1. Loudness distribution of real and fake clips: fake clips tend to be quieter.*
+All clips are 16 kHz mono, with no clipping.
+
+**Two things we noticed while exploring the data:**
+
+1. **The classes are not balanced.** There are about 1.7 real clips for every fake clip. A lazy model that always says "real" would already get 63% accuracy, so we cannot rely on accuracy alone. We also report precision, recall, F1, ROC-AUC and EER.
+2. **The dataset has "shortcuts".** Fake clips are, on average, **longer** (by about 1 second for the same speaker) and **quieter** (by about 2.4 dB). Loudness alone could already separate real from fake fairly well for many speakers (median per-speaker AUC 0.744). A model could "cheat" by learning *"quiet and long = fake"* instead of learning what an AI voice actually sounds like. We fix this in preprocessing (Section III.2).
 
 ## III. Methodology
 
@@ -109,14 +119,14 @@ All models were tested on the same 9,546 validation clips from 14 unseen speaker
 | CNN + BiLSTM | 98.54% | 99.48% | 96.58% | 0.9801 | 0.9916 | 2.83% |
 | CNN + BiGRU | 98.48% | 99.53% | 96.35% | 0.9792 | 0.9889 | 2.84% |
 
-![Model comparison](outputs/figures/08_metric_comparison.png)
+add a pic here later
 *Figure 3. Comparison of all five models.*
 
 EfficientNet-B0 is the best model overall, with the highest recall, F1 and ROC-AUC and the lowest EER. However, the simple CNN is surprisingly close, which shows that log-Mel spectrograms combined with a basic CNN are already a strong baseline. The hybrid models ranked last, so analysing the sound in time order did not help. A likely reason is that each clip only has 31 time steps, and the traces left by synthetic voices seem to be local rather than spread over time.
 
 Although the overall scores look almost perfect, breaking them down by speaker revealed a major weakness. Between 96% and 99% of the missed fakes in every model came from a single speaker, Adam Driver, and 69 of his fake clips fooled all five models. Even the best model caught only 47.4% of his fakes, while for every other validation speaker the models caught almost all fakes. His fake clips contain more high-frequency energy than even real speech, and since the models had learned that strong high frequencies usually mean a real voice, they confidently labelled his fakes as real. His fakes were also originally much louder than the training fakes, which suggests they were made with a different voice-cloning tool. After removing Adam Driver, the errors no longer depended on clip length or loudness, which confirms that our preprocessing successfully removed those shortcuts.
 
-![Adam Driver profile](outputs/figures/09_adam_driver_profile.png)
+Adam Driver profile here add later
 *Figure 4. Adam Driver's fake clips compared with the training data.*
 
 Finally, by default a clip is labelled fake when the model's fake probability is above 0.5. Lowering this threshold catches more fakes but also produces more false alarms. For EfficientNet-B0, lowering it to 0.244 raised overall recall from 97.9% to 98.5% and Adam Driver recall from 47.4% to 62.8%, at the cost of 29 additional false alarms. In a scam-call setting, where missing a fake is worse than a false alarm, a lower threshold may be the better choice.

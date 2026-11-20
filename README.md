@@ -44,6 +44,7 @@ In this section, the code used in this project will be described. To access full
 This code serves as a pre-flight diagnostic script that verifies whether the system setup is ready before running the deepfake detection pipeline. It uses only Python’s standard library so it can execute without external dependencies to check four key components which are system and Python’s environments, required libraries including librosa, hardware acceleration, along with storage and dataset readiness to ensure the raw audio files are in place before proceeding to the next step.
 
 #### [01_organize_dataset.py](https://github.com/balqisinsyirah/deepfake-voice-detector/blob/2b9b3417665fc2711cd0d1dfbbd0ddcde65fbe1a/src/01_organize_dataset.py)
+structures the raw In-the-Wild audio files into binary class directories and builds a centralized metadata index for downstream processing. Using ⁠meta.csv⁠, the script maps original dataset labels (⁠bona-fide⁠ and ⁠spoof⁠) to standardized ⁠real⁠ (⁠0⁠) and ⁠fake⁠ (⁠1⁠) categories, performs a pre-move integrity scan to catch missing or conflicting files, and safely relocates the recordings into ⁠real/⁠ and ⁠fake/⁠ subdirectories when executed with the ⁠--apply⁠ flag. Finally, it generates ⁠dataset_index.csv⁠ containing each clip's speaker identity, standardized label, relative file path, and file size to support subsequent data splitting and feature extraction.
 
 #### [02_eda.py](https://github.com/balqisinsyirah/deepfake-voice-detector/blob/2b9b3417665fc2711cd0d1dfbbd0ddcde65fbe1a/src/02_eda.py)
 

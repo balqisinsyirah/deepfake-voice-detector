@@ -57,6 +57,7 @@ This code implements the core audio preprocessing and feature extraction pipelin
 #### [04_split_dataloader.py](https://github.com/balqisinsyirah/deepfake-voice-detector/blob/2b9b3417665fc2711cd0d1dfbbd0ddcde65fbe1a/src/04_split_dataloader.py)
 
 #### [05_train_cnn.py](https://github.com/balqisinsyirah/deepfake-voice-detector/blob/2b9b3417665fc2711cd0d1dfbbd0ddcde65fbe1a/src/05_train_cnn.py)
+This code trains our Simple CNN baseline. It reads the log-Mel pictures, standardizes them with the training mean and standard deviation, and randomly hides small strips of each training picture (SpecAugment) so the model does not just memorizes them. The model has four convolution blocks(32, 64, 128, and 256 channels, each with BatchNorm and ReLU),global average pooling, Dropout 0.4, and a 2-class output layer, which gives about 0.39 million parameters. We train it with the AdamW optimizer and class weights, because fake clips are only about 37% of the data and a scheduler lowers the learning rate when progress slows down. After every epoch, the code checks the model on the validation set, which only has speakers the model has never heard, keeps the best epoch by ROC-AUC, and stops early if it stops improving. In our run, the best epoch was 12 and training took about 5.4 minutes. The best model, its results, and four figures are saved.
 
 #### [06_train_transfer.py](https://github.com/balqisinsyirah/deepfake-voice-detector/blob/2b9b3417665fc2711cd0d1dfbbd0ddcde65fbe1a/src/06_train_transfer.py)
 

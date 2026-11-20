@@ -43,7 +43,8 @@ Graphs, tables, any statistics (probably the output)
 
 ## Related Work
 the tools, libraries, blog, any documentations used for this project
-Dominik Müller et al., 2022, Voice Spoofing in the Wild: A Large-Scale Dataset and Evaluation of Countermeasures, https://huggingface.co/papers/2203.16263
-Tapendu Karmakar, 2024, Introduction to EfficientNet. Kaggle.Com; Kaggle. https://www.kaggle.com/code/iamtapendu/introduction-to-efficientnet
+- Dominik Müller et al., 2022, Voice Spoofing in the Wild: A Large-Scale Dataset and Evaluation of Countermeasures, https://huggingface.co/papers/2203.16263
+- Tapendu Karmakar, 2024, Introduction to EfficientNet. Kaggle.Com; Kaggle. https://www.kaggle.com/code/iamtapendu/introduction-to-efficientnet
+- Lam, P., Phat, L., Truong, N., Huyen, N., & Schindler, A. (2024). Deepfake audio detection using spectrogram-based feature and ensemble of deep learning models (2407.01777v1). arXiv. https://arxiv.org/abs/2407.01777v1
 
 ## Conclusion : Discussion

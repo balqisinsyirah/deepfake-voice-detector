@@ -52,7 +52,7 @@ Image-based neural networks are very good at finding patterns in pictures, so we
 
 Using librosa, each clip is analysed with an FFT window of 2,048 samples and a hop length of 512, mapped onto 128 Mel bands between 20 Hz and 8 kHz, and converted to decibels between −80 and 0 dB. Every clip becomes a 128 × 126 image.
 
-![Preprocessed examples](outputs/figures/03_preprocessed_examples.png)
+<img width="2456" height="1359" alt="03_preprocessed_examples" src="https://github.com/user-attachments/assets/90d3f0cb-5745-47cf-9223-898864b0e6a0" />
 *Figure 2. Waveform and log-Mel spectrogram of a real and a fake clip from the same speaker.*
 
 ### Preprocessing

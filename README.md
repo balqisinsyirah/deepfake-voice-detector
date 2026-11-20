@@ -122,12 +122,15 @@ All models were tested on the same 9,546 validation clips from 14 unseen speaker
 add a pic here later
 *Figure 3. Comparison of all five models.*
 
+<img width="1475" height="1168" alt="08_eer_curves" src="https://github.com/user-attachments/assets/870a82c8-9630-4873-b611-fcfe93cc837f" />
+*Figure 4. Comparison of False Positive Rate (FPR) versus False Negative Rate (FNR) and Equal Error Rate (EER) across all five models.*
+
 EfficientNet-B0 is the best model overall, with the highest recall, F1 and ROC-AUC and the lowest EER. However, the simple CNN is surprisingly close, which shows that log-Mel spectrograms combined with a basic CNN are already a strong baseline. The hybrid models ranked last, so analysing the sound in time order did not help. A likely reason is that each clip only has 31 time steps, and the traces left by synthetic voices seem to be local rather than spread over time.
 
 Although the overall scores look almost perfect, breaking them down by speaker revealed a major weakness. Between 96% and 99% of the missed fakes in every model came from a single speaker, Adam Driver, and 69 of his fake clips fooled all five models. Even the best model caught only 47.4% of his fakes, while for every other validation speaker the models caught almost all fakes. His fake clips contain more high-frequency energy than even real speech, and since the models had learned that strong high frequencies usually mean a real voice, they confidently labelled his fakes as real. His fakes were also originally much louder than the training fakes, which suggests they were made with a different voice-cloning tool. After removing Adam Driver, the errors no longer depended on clip length or loudness, which confirms that our preprocessing successfully removed those shortcuts.
 
 <img width="3574" height="983" alt="09_adam_driver_profile" src="https://github.com/user-attachments/assets/16be17eb-ae7d-414c-a0cb-4e5f30ff9e12" />
-*Figure 4. Adam Driver's fake clips compared with the training data.*
+*Figure 5. Adam Driver's fake clips compared with the training data.*
 
 
 Finally, by default a clip is labelled fake when the model's fake probability is above 0.5. Lowering this threshold catches more fakes but also produces more false alarms. For EfficientNet-B0, lowering it to 0.244 raised overall recall from 97.9% to 98.5% and Adam Driver recall from 47.4% to 62.8%, at the cost of 29 additional false alarms. In a scam-call setting, where missing a fake is worse than a false alarm, a lower threshold may be the better choice.

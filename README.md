@@ -32,7 +32,7 @@
 
 ## I. Introduction
 
-The rapid advancement of generative AI has fueled a surge in sophisticated voice phishing scams, where synthetic voice clones impersonate individuals using deepfake technology to deceive victims into financial fraud. Recent studies by researchers from Harvard and Meta reveal that approximately 1 in 6 adults could comply with emotional and relationship-based AI voice-cloning scams, such as a family emergency, which is more persuasive than the typical call center impersonation **[TODO: add source]**. Researchers warn that as this technology spreads, scam calls will become fully automated and the cost of mass dialing will plummet, making scalable defense mechanisms urgent.
+The rapid advancement of generative AI has fueled a surge in sophisticated voice phishing scams, where synthetic voice clones impersonate individuals using deepfake technology to deceive victims into financial fraud. Recent studies by researchers from Harvard and Meta reveal that approximately 1 in 6 adults could comply with emotional and relationship-based AI voice-cloning scams, such as a family emergency, which is more persuasive than the typical call center impersonation (Heiding et al., 2026). Researchers warn that as this technology spreads, scam calls will become fully automated and the cost of mass dialing will plummet, making scalable defense mechanisms urgent (Heiding et al., 2026).
 
 Our objective is to develop a baseline deepfake voice detector by training and comparing the performance of various models to combat this increasing problem. To accomplish this, we use the [In-the-Wild dataset](https://huggingface.co/datasets/mueller91/In-The-Wild) introduced by Müller et al. (2022), which contains 31,779 real and fake audio recordings from public figures and is released under CC BY-SA 4.0. We split the dataset by speaker into two parts: 70% for training and 30% for the validation set, process raw audio files via librosa to extract log-Mel spectrogram features, and train image-based and hybrid neural network architectures on a local NVIDIA RTX 3060 GPU.
 
@@ -268,19 +268,28 @@ For a scam-call app, missing a fake is worse than a false alarm, so a lower thre
 
 ## V. Related Work
 
-**Papers and datasets**
+**Motivation (voice-clone scams)**
+- Heiding, F., Mayrink Verdun, C., Lermen, S., Kao, A., Albiero, V., Deason, L., Veliche, I.-E., & Lehane, C. (2026). *Evaluating AI Models' Capability to Automate Voice Phishing Attacks.* Expert Systems with Applications, 332. https://doi.org/10.1016/j.eswa.2026.133620 (preprint: https://arxiv.org/abs/2607.09970)
+
+**Dataset and deepfake detection**
 - Müller, N. M., Czempin, P., Dieckmann, F., Froghyar, A., & Böttinger, K. (2022). *Does Audio Deepfake Detection Generalize?* Interspeech 2022. https://arxiv.org/abs/2203.16263
 - In-the-Wild dataset: https://huggingface.co/datasets/mueller91/In-The-Wild
 - Pham, L. et al. (2024). *Deepfake audio detection using spectrogram-based feature and ensemble of deep learning models.* arXiv:2407.01777. https://arxiv.org/abs/2407.01777
+
+**Models and training methods**
+- He, K., Zhang, X., Ren, S., & Sun, J. (2016). *Deep Residual Learning for Image Recognition* (ResNet). CVPR 2016. https://arxiv.org/abs/1512.03385
 - Tan, M. & Le, Q. (2019). *EfficientNet: Rethinking Model Scaling for Convolutional Neural Networks.* ICML 2019. https://arxiv.org/abs/1905.11946
-- He, K. et al. (2016). *Deep Residual Learning for Image Recognition* (ResNet). CVPR 2016. https://arxiv.org/abs/1512.03385
+- Deng, J. et al. (2009). *ImageNet: A Large-Scale Hierarchical Image Database.* CVPR 2009. https://doi.org/10.1109/CVPR.2009.5206848
+- Hochreiter, S. & Schmidhuber, J. (1997). *Long Short-Term Memory.* Neural Computation, 9(8), 1735–1780. https://doi.org/10.1162/neco.1997.9.8.1735
+- Cho, K. et al. (2014). *Learning Phrase Representations using RNN Encoder–Decoder for Statistical Machine Translation* (GRU). EMNLP 2014. https://arxiv.org/abs/1406.1078
+- Bahdanau, D., Cho, K., & Bengio, Y. (2015). *Neural Machine Translation by Jointly Learning to Align and Translate* (attention). ICLR 2015. https://arxiv.org/abs/1409.0473
 - Park, D. S. et al. (2019). *SpecAugment: A Simple Data Augmentation Method for Automatic Speech Recognition.* Interspeech 2019. https://arxiv.org/abs/1904.08779
-- **[TODO: Harvard/Meta voice-clone scam study cited in the Introduction]**
+- Loshchilov, I. & Hutter, F. (2019). *Decoupled Weight Decay Regularization* (AdamW). ICLR 2019. https://arxiv.org/abs/1711.05101
 
 **Tools and tutorials**
 - McFee, B. et al. (2015). *librosa: Audio and Music Signal Analysis in Python.* Proc. SciPy, 18–24. https://doi.org/10.25080/Majora-7b98e3ed-003
-- PyTorch & torchvision: https://pytorch.org
-- scikit-learn: https://scikit-learn.org
+- Paszke, A. et al. (2019). *PyTorch: An Imperative Style, High-Performance Deep Learning Library.* NeurIPS 2019. https://pytorch.org
+- Pedregosa, F. et al. (2011). *Scikit-learn: Machine Learning in Python.* JMLR, 12, 2825–2830. https://scikit-learn.org
 - Karmakar, T. (2024). *Introduction to EfficientNet.* Kaggle. https://www.kaggle.com/code/iamtapendu/introduction-to-efficientnet
 
 ---

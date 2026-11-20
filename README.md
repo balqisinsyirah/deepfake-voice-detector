@@ -29,6 +29,8 @@ EfficientNet-B0 employs a compound scaling method that systematically and unifor
 
 To adapt our 128×126 log-Mel spectrograms for EfficientNet-B0, the decibel features (−80 dB to 0 dB) were normalized to [0,1] range, bilinearly resized to 224×224 pixels, and replicated across three channels to match ImageNet pre-trained input requirements. We replaced the default classification head (classifier[1]) with a two-class linear output layer and fine-tuned the model using differential learning rates (backbone 1e-4, head 1e-3), the AdamW optimizer, class-weighted CrossEntropyLoss, and training-time SpecAugment regularization.
 
+### Infrastructure
+
 ### Feature : Extraction of log-Mel spectrograms using librosa
 For feature extraction, raw audio waveforms were transformed into two-dimensional log-Mel spectrograms using the librosa audio processing library. Rather than feeding raw, high-dimensional time-domain signals directly into the network, converting speech into time-frequency representations enables the convolutional architecture to analyze both spectral distribution and temporal dynamics simultaneously.
 
@@ -48,7 +50,9 @@ This code structures the raw In-the-Wild audio files into binary class directori
 
 #### [02_eda.py](https://github.com/balqisinsyirah/deepfake-voice-detector/blob/2b9b3417665fc2711cd0d1dfbbd0ddcde65fbe1a/src/02_eda.py)
 This code conducts an exploratory data analysis across all 31,779 clips to inspect acoustic distributions, audit for confounding metadata shortcuts, and visualize spectral patterns prior to model training. Using ⁠soundfile⁠ and ⁠scipy.stats⁠, the script extracts per-clip duration, sample rate, channel count, and RMS loudness (⁠dBFS⁠), followed by non-parametric statistical tests (Mann-Whitney U, Kolmogorov-Smirnov, and within-speaker Wilcoxon tests) and single-feature ROC-AUC checks to measure whether duration or volume alone can separate real from synthetic speech. Finally, it exports summary CSV tables alongside comparative plots of class distributions, speaker compositions, same-speaker waveforms, and log-Mel spectrograms to guide preprocessing decisions.
+
 #### [03_preprocess.py](https://github.com/balqisinsyirah/deepfake-voice-detector/blob/2b9b3417665fc2711cd0d1dfbbd0ddcde65fbe1a/src/03_preprocess.py)
+This code implements the core audio preprocessing and feature extraction pipeline, converting all raw speech waveforms into uniform two-dimensional log-Mel spectrogram representations. Using ⁠librosa⁠, the script resamples every clip to 16\text{ kHz} mono and standardizes duration to 4 seconds (64,000 samples) via center-cropping for longer recordings and wrap-padding for shorter clips to prevent artificial silence shortcuts. It then normalizes clip loudness to -23.0\text{ dBFS} RMS (with a 0.99 peak limiter) to eliminate volume bias before computing 128-band log-Mel spectrograms (⁠n_fft=2048⁠, ⁠hop_length=512⁠, ⁠fmax=8000 Hz⁠, ⁠top_db=80.0⁠), saving the resulting 128 \times 126 ⁠float32⁠ feature matrices and metadata in parallel for model training.
 
 #### [04_split_dataloader.py](https://github.com/balqisinsyirah/deepfake-voice-detector/blob/2b9b3417665fc2711cd0d1dfbbd0ddcde65fbe1a/src/04_split_dataloader.py)
 

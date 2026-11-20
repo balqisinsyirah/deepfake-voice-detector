@@ -41,6 +41,8 @@ In this section, the code used in this project will be described. To access full
 
 #### [00_environment_check.py](https://github.com/balqisinsyirah/deepfake-voice-detector/blob/2b9b3417665fc2711cd0d1dfbbd0ddcde65fbe1a/src/00_environment_check.py)
 
+This code serves as a pre-flight diagnostic script that verifies whether the system setup is ready before running the deepfake detection pipeline. It uses only Python’s standard library so it can execute without external dependencies to check four key components which are system and Python’s environments, required libraries including librosa, hardware acceleration, along with storage and dataset readiness to ensure the raw audio files are in place before proceeding to the next step.
+
 #### [01_organize_dataset.py](https://github.com/balqisinsyirah/deepfake-voice-detector/blob/2b9b3417665fc2711cd0d1dfbbd0ddcde65fbe1a/src/01_organize_dataset.py)
 
 #### [02_eda.py](https://github.com/balqisinsyirah/deepfake-voice-detector/blob/2b9b3417665fc2711cd0d1dfbbd0ddcde65fbe1a/src/02_eda.py)

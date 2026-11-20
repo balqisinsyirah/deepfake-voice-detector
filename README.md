@@ -22,7 +22,7 @@ The dataset was processed to optimize outcomes for evaluating deepfake detection
 ## Methodology
 ### Methods used from AIML libraries
 
-### Selected CNN Model: EfficientNet-B0
+### Selected CNN Model: EfficientNet-B0 //change this to model b : compared to resnet
 For this project, we selected EfficientNet-B0 as our core convolutional neural network (CNN) architecture for deepfake voice detection. Originally designed via automated Neural Architecture Search (NAS), EfficientNet-B0 is well-regarded for its strong 2D spatial feature extraction capabilities and compact parameter footprint (4.01 million trainable parameters), making it well-suited for the computational demands of analyzing audio spectrograms.
 
 EfficientNet-B0 employs a compound scaling method that systematically and uniformly balances three critical network dimensions: depth (number of layers), width (channel capacity), and resolution (224×224 input size). Built upon Mobile Inverted Bottleneck Convolutions (MBConv), squeeze-and-excitation modules, and self-gated Swish activation functions, this architecture achieves high representational capacity with fewer parameters than conventional networks. Its ability to efficiently capture subtle time-frequency variations makes it ideal for identifying the fine-grained spectral artifacts typical of synthetic speech.

@@ -52,8 +52,8 @@ Image-based neural networks are very good at finding patterns in pictures, so we
 
 Using librosa, each clip is analysed with an FFT window of 2,048 samples and a hop length of 512, mapped onto 128 Mel bands between 20 Hz and 8 kHz, and converted to decibels between −80 and 0 dB. Every clip becomes a 128 × 126 image.
 
-<img width="2456" height="1359" alt="03_preprocessed_examples" src="https://github.com/user-attachments/assets/90d3f0cb-5745-47cf-9223-898864b0e6a0" />
-*Figure 2. Waveform and log-Mel spectrogram of a real and a fake clip from the same speaker.*
+<p align="center"><img width="2456" height="1359" alt="03_preprocessed_examples" src="https://github.com/user-attachments/assets/90d3f0cb-5745-47cf-9223-898864b0e6a0" /></p>
+<p align="center">*Figure 2. Waveform and log-Mel spectrogram of a real and a fake clip from the same speaker.*</p>
 
 ### Preprocessing
 To remove the shortcuts found in Section II, every clip is made identical in length and loudness before it is converted. Each clip is fixed to exactly 4 seconds: longer clips keep their middle 4 seconds, and shorter clips are repeated (looped) until they reach 4 seconds, instead of being padded with silence, which could become a new clue. Every clip is also normalized to the same loudness (−23 dBFS). After this step, loudness alone can no longer separate real from fake (its AUC dropped from 0.649 to 0.505, which is close to random guessing).
@@ -122,21 +122,21 @@ All models were tested on the same 9,546 validation clips from 14 unseen speaker
 add a pic here later
 *Figure 3. Comparison of all five models.*
 
-<img width="695" height="550" alt="08_eer_curves" src="https://github.com/user-attachments/assets/870a82c8-9630-4873-b611-fcfe93cc837f" />
+<p align="center"><img width="695" height="550" alt="08_eer_curves" src="https://github.com/user-attachments/assets/870a82c8-9630-4873-b611-fcfe93cc837f" /></p>
 
-*Figure 4. Comparison of False Positive Rate (FPR) versus False Negative Rate (FNR) and Equal Error Rate (EER) across all five models.*
+<p align="center">*Figure 4. Comparison of False Positive Rate (FPR) versus False Negative Rate (FNR) and Equal Error Rate (EER) across all five models.*</p>
 
 EfficientNet-B0 is the best model overall, with the highest recall, F1 and ROC-AUC and the lowest EER. However, the simple CNN is surprisingly close, which shows that log-Mel spectrograms combined with a basic CNN are already a strong baseline. The hybrid models ranked last, so analysing the sound in time order did not help. A likely reason is that each clip only has 31 time steps, and the traces left by synthetic voices seem to be local rather than spread over time.
 
 Although the overall scores look almost perfect, breaking them down by speaker revealed a major weakness. Between 96% and 99% of the missed fakes in every model came from a single speaker, Adam Driver, and 69 of his fake clips fooled all five models. Even the best model caught only 47.4% of his fakes, while for every other validation speaker the models caught almost all fakes. His fake clips contain more high-frequency energy than even real speech, and since the models had learned that strong high frequencies usually mean a real voice, they confidently labelled his fakes as real. His fakes were also originally much louder than the training fakes, which suggests they were made with a different voice-cloning tool. After removing Adam Driver, the errors no longer depended on clip length or loudness, which confirms that our preprocessing successfully removed those shortcuts.
 
-<img width="3574" height="983" alt="09_adam_driver_profile" src="https://github.com/user-attachments/assets/a605dccf-d927-4a9d-aa32-d9e3e5b89baf" />
-*Figure 5. Adam Driver's fake clips compared with the training data.*
+<p align="center"><img width="3574" height="983" alt="09_adam_driver_profile" src="https://github.com/user-attachments/assets/a605dccf-d927-4a9d-aa32-d9e3e5b89baf" /></p>
+<p align="center">*Figure 5. Adam Driver's fake clips compared with the training data.*</p>
 
 Finally, by default a clip is labelled fake when the model's fake probability is above 0.5. Lowering this threshold catches more fakes but also produces more false alarms. For EfficientNet-B0, lowering it to 0.244 raised overall recall from 97.9% to 98.5% and Adam Driver recall from 47.4% to 62.8%, at the cost of 29 additional false alarms. In a scam-call setting, where missing a fake is worse than a false alarm, a lower threshold may be the better choice.
 
-<img width="3573" height="983" alt="09_threshold_tradeoff" src="https://github.com/user-attachments/assets/38d63ed3-2470-4b91-8b32-a41661d0be80" />
-*Figure 6. Effect of decision threshold trade-off on overall fake recall, false positive rate (FPR), and Adam Driver fake recall across all five models.*
+<p align="center"><img width="3573" height="983" alt="09_threshold_tradeoff" src="https://github.com/user-attachments/assets/38d63ed3-2470-4b91-8b32-a41661d0be80" /></p>
+<p align="center">*Figure 6. Effect of decision threshold trade-off on overall fake recall, FPR and Adam Driver fake recall across all five models.*</p>
 
 ## V. Related Work
 The tools, libraries, papers and documentation used for this project:

@@ -36,7 +36,12 @@ To ensure uniformity across the dataset, all audio recordings were first standar
 
 Finally, the resulting power spectrogram magnitudes were converted into logarithmic decibel (dB) scale (librosa.power_to_db) relative to peak power and clipped to a bounded range of −80 dB to 0 dB. This compression highlights subtle high-frequency artifacts and vocoder inconsistencies characteristic of synthetic speech, yielding a fixed-size 128×126 time-frequency matrix for every audio clip.
 
-### Code / features explanations
+### Codes explanations
+#### 00_environment_check.py
+
+#### 01_organize_dataset.py
+
+#### 02_eda.py
 
 ## Evaluation & Analysis
 Graphs, tables, any statistics (probably the output)

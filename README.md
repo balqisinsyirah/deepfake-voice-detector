@@ -46,5 +46,6 @@ the tools, libraries, blog, any documentations used for this project
 - Dominik Müller et al., 2022, Voice Spoofing in the Wild: A Large-Scale Dataset and Evaluation of Countermeasures, https://huggingface.co/papers/2203.16263
 - Tapendu Karmakar, 2024, Introduction to EfficientNet. Kaggle.Com; Kaggle. https://www.kaggle.com/code/iamtapendu/introduction-to-efficientnet
 - Lam, P., Phat, L., Truong, N., Huyen, N., & Schindler, A. (2024). Deepfake audio detection using spectrogram-based feature and ensemble of deep learning models (2407.01777v1). arXiv. https://arxiv.org/abs/2407.01777v1
-
+- McFee, B., Raffel, C., Liang, D., Ellis, D. P., McVicar, M., Battenberg, E., & Nieto, O. (2015). librosa: Audio and music signal analysis in Python. Proceedings of the 14th Python in Science Conference (SciPy), 18–24. https://doi.org/10.25080/Majora-7b98e3ed-003
+- 
 ## Conclusion : Discussion

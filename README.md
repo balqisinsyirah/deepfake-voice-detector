@@ -37,7 +37,7 @@ To ensure uniformity across the dataset, all audio recordings were first standar
 Finally, the resulting power spectrogram magnitudes were converted into logarithmic decibel (dB) scale (librosa.power_to_db) relative to peak power and clipped to a bounded range of −80 dB to 0 dB. This compression highlights subtle high-frequency artifacts and vocoder inconsistencies characteristic of synthetic speech, yielding a fixed-size 128×126 time-frequency matrix for every audio clip.
 
 ### Brief code explanations
-In this section, the code used in this project will be described. For detailed explanations of all parts of the code, please visit _______ . The main files of our project and their tasks are:
+In this section, the code used in this project will be described. To access full code and explanation, please click code file name below. The main files of our project and their tasks are:
 
 #### [00_environment_check.py](https://github.com/balqisinsyirah/deepfake-voice-detector/blob/2b9b3417665fc2711cd0d1dfbbd0ddcde65fbe1a/src/00_environment_check.py)
 
@@ -47,17 +47,17 @@ In this section, the code used in this project will be described. For detailed e
 
 #### [03_preprocess.py](https://github.com/balqisinsyirah/deepfake-voice-detector/blob/2b9b3417665fc2711cd0d1dfbbd0ddcde65fbe1a/src/03_preprocess.py)
 
-#### 04_split_dataloader.py
+#### [04_split_dataloader.py](https://github.com/balqisinsyirah/deepfake-voice-detector/blob/2b9b3417665fc2711cd0d1dfbbd0ddcde65fbe1a/src/04_split_dataloader.py)
 
-#### 05_train_cnn.py
+#### [05_train_cnn.py](https://github.com/balqisinsyirah/deepfake-voice-detector/blob/2b9b3417665fc2711cd0d1dfbbd0ddcde65fbe1a/src/05_train_cnn.py)
 
-#### 06_train_transfer.py
+#### [06_train_transfer.py](https://github.com/balqisinsyirah/deepfake-voice-detector/blob/2b9b3417665fc2711cd0d1dfbbd0ddcde65fbe1a/src/06_train_transfer.py)
 
-#### 07_train_hybrid.py
+#### [07_train_hybrid.py](https://github.com/balqisinsyirah/deepfake-voice-detector/blob/2b9b3417665fc2711cd0d1dfbbd0ddcde65fbe1a/src/07_train_hybrid.py)
 
-#### 08_evaluate_models.py
+#### [08_evaluate_models.py](https://github.com/balqisinsyirah/deepfake-voice-detector/blob/2b9b3417665fc2711cd0d1dfbbd0ddcde65fbe1a/src/08_evaluate_models.py)
 
-#### 09_error_analysis.py
+#### [09_error_analysis.py](https://github.com/balqisinsyirah/deepfake-voice-detector/blob/2b9b3417665fc2711cd0d1dfbbd0ddcde65fbe1a/src/09_error_analysis.py)
 
 
 ## Evaluation & Analysis

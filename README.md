@@ -43,6 +43,21 @@ Finally, the resulting power spectrogram magnitudes were converted into logarith
 
 #### 02_eda.py
 
+#### 03_preprocess.py
+
+#### 04_split_dataloader.py
+
+#### 05_train_cnn.py
+
+#### 06_train_transfer.py
+
+#### 07_train_hybrid.py
+
+#### 08_evaluate_models.py
+
+#### 09_error_analysis.py
+
+
 ## Evaluation & Analysis
 Graphs, tables, any statistics (probably the output)
 

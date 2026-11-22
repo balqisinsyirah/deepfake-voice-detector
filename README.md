@@ -145,14 +145,7 @@ Finally, by default a clip is labelled fake when the model's fake probability is
 <p align="center"><img width="3998" height="1100" alt="09_threshold_tradeoff" src="https://github.com/user-attachments/assets/38d63ed3-2470-4b91-8b32-a41661d0be80" /></p>
 <p align="center">*Figure 6. Effect of decision threshold trade-off on overall fake recall, FPR and Adam Driver fake recall across all five models.*</p>
 
-## V. Conclusion: Discussion
-In this project we built a complete pipeline that converts speech into log-Mel spectrograms, removes the length and loudness shortcuts present in the dataset, and compares five neural networks on speakers they have never heard. EfficientNet-B0 performed best, with an F1 score of 0.985, a ROC-AUC of 0.999 and an EER of 1.26%, although a simple CNN came surprisingly close. Adding recurrent layers to model time did not improve the results, showing that a more complex model is not automatically a better one.
-
-The most important lesson came from the error analysis. A score of 99% on average can still hide a complete failure: almost all missed fakes came from a single speaker whose fake clips were probably produced with a different voice-cloning tool. This is exactly the situation a real detector would face, since scammers constantly use new tools.
-
-Our work has several limitations. We used only one train/validation split with 14 validation speakers, so the results depend on which speakers ended up in validation. The validation set was also used to choose the best epoch, so the scores are slightly optimistic, and each model was trained only once. Finally, we only tested on one dataset. Therefore, we couldn't confirm whether the same models would work the same on other datasets. In future work, we would like to test on other datasets and real phone-call audio, use cross-validation across speakers, include training data from more voice-cloning tools, and use explanation methods to see which parts of the spectrogram the models actually focus on.
-
-## VI. Related Work
+## V. Related Work
 The tools, libraries, papers and documentation used for this project:
 - Heiding, F., Mayrink Verdun, C., Lermen, S., Kao, A., Albiero, V., Deason, L., Veliche, I.-E., & Lehane, C. (2026). Evaluating AI Models' Capability to Automate Voice Phishing Attacks. *Expert Systems with Applications*, 332. https://doi.org/10.1016/j.eswa.2026.133620
 - Müller, N. M., Czempin, P., Dieckmann, F., Froghyar, A., & Böttinger, K. (2022). Does Audio Deepfake Detection Generalize? *Interspeech 2022*. https://arxiv.org/abs/2203.16263
@@ -169,3 +162,10 @@ The tools, libraries, papers and documentation used for this project:
 - Paszke, A. et al. (2019). PyTorch: An Imperative Style, High-Performance Deep Learning Library. *NeurIPS 2019*. https://pytorch.org
 - Pedregosa, F. et al. (2011). Scikit-learn: Machine Learning in Python. *JMLR*, 12, 2825–2830. https://scikit-learn.org
 - Karmakar, T. (2024). Introduction to EfficientNet. Kaggle. https://www.kaggle.com/code/iamtapendu/introduction-to-efficientnet
+
+## VI. Conclusion: Discussion
+In this project we built a complete pipeline that converts speech into log-Mel spectrograms, removes the length and loudness shortcuts present in the dataset, and compares five neural networks on speakers they have never heard. EfficientNet-B0 performed best, with an F1 score of 0.985, a ROC-AUC of 0.999 and an EER of 1.26%, although a simple CNN came surprisingly close. Adding recurrent layers to model time did not improve the results, showing that a more complex model is not automatically a better one.
+
+The most important lesson came from the error analysis. A score of 99% on average can still hide a complete failure: almost all missed fakes came from a single speaker whose fake clips were probably produced with a different voice-cloning tool. This is exactly the situation a real detector would face, since scammers constantly use new tools.
+
+Our work has several limitations. We used only one train/validation split with 14 validation speakers, so the results depend on which speakers ended up in validation. The validation set was also used to choose the best epoch, so the scores are slightly optimistic, and each model was trained only once. Finally, we only tested on one dataset. Therefore, we couldn't confirm whether the same models would work the same on other datasets. In future work, we would like to test on other datasets and real phone-call audio, use cross-validation across speakers, include training data from more voice-cloning tools, and use explanation methods to see which parts of the spectrogram the models actually focus on.

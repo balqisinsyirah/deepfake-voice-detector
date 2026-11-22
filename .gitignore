@@ -13,5 +13,8 @@ data/splits/
 # Model weights and logs (large)
 outputs/models/
 outputs/logs/
-PROGRESS.md
-progress_EN.md
+
+
+/PROGRESS.md
+/progress_EN.md
+

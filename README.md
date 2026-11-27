@@ -8,8 +8,7 @@ Hanyang University, AI and Application, ITE351 (Fall 2026)
 4. Shaqweeza, Information Systems, Hanyang University, shqweeza20@hanyang.ac.kr
 
 ## Video Presentation
-[YouTube Video Presentation]
-(https://youtu.be/qHKQiQRuZQI)
+[YouTube Video Presentation](https://youtu.be/qHKQiQRuZQI)
 
 ## Table of Contents
 - [I. Introduction](#i-introduction)
